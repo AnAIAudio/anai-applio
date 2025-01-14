@@ -117,7 +117,7 @@ def launch_gradio(port):
         share="--share" in sys.argv,
         inbrowser="--open" in sys.argv,
         server_port=port,
-        root_path='/rvc'
+        root_path='/rvc/'
     )
 
 
