@@ -40,7 +40,7 @@ run_prerequisites_script(
 # Initialize i18n
 from assets.i18n.i18n import I18nAuto
 
-i18n = I18nAuto()
+i18n = I18nAuto(language="ko_KO")
 
 # Start Discord presence if enabled
 from tabs.settings.sections.presence import load_config_presence
