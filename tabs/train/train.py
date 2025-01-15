@@ -625,7 +625,7 @@ def train_tab():
                         info=i18n(
                             "Utilize pretrained models when training your own. This approach reduces training duration and enhances overall quality."
                         ),
-                        value=True,
+                        value=False,
                         interactive=True,
                     )
                 with gr.Column():
@@ -642,7 +642,7 @@ def train_tab():
                         info=i18n(
                             "Cache the dataset in GPU memory to speed up the training process."
                         ),
-                        value=False,
+                        value=True,
                         interactive=True,
                     )
                     checkpointing = gr.Checkbox(
