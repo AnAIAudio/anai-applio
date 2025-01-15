@@ -7,4 +7,4 @@ export PYTORCH_ENABLE_MPS_FALLBACK=1
 export PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
  
 clear
-nohup python app.py &
+nohup python app.py & tail -f -n 1000 ./nohup.out
