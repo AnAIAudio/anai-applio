@@ -95,7 +95,7 @@ def get_number_of_gpus():
     if torch.cuda.is_available():
         num_gpus = torch.cuda.device_count()
         if num_gpus > 1:
-            return f"{num_gpus[1]}"
+            return "1"
         else:
             return "0"
 
