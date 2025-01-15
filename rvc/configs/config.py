@@ -60,7 +60,7 @@ class Config:
         i_device = int(self.device.split(":")[-1])
         self.gpu_name = torch.cuda.get_device_name(i_device)
         self.gpu_mem = torch.cuda.get_device_properties(i_device).total_memory // (
-            1024**3
+                1024 ** 3
         )
 
 
@@ -94,6 +94,11 @@ def get_gpu_info():
 def get_number_of_gpus():
     if torch.cuda.is_available():
         num_gpus = torch.cuda.device_count()
-        return "-".join(map(str, range(num_gpus)))
+        if num_gpus > 1:
+            return f"{num_gpus[1]}"
+        else:
+            return "0"
+
+        # return "-".join(map(str, range(num_gpus)))
     else:
         return "-"
