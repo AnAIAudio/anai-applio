@@ -65,7 +65,7 @@ my_applio = loadThemes.load_theme() or "ParityError/Interstellar"
 
 # Define Gradio interface
 with gr.Blocks(
-    theme=my_applio, title="Applio", css="footer{display:none !important}"
+        theme=my_applio, title="Applio", css="footer{display:none !important}"
 ) as Applio:
     gr.Markdown("# Applio")
     gr.Markdown(
@@ -121,6 +121,7 @@ def launch_gradio(server_name: str, server_port: int) -> None:
         inbrowser="--open" in sys.argv,
         server_name=server_name,
         server_port=server_port,
+        root_path="/applio",
     )
 
 
