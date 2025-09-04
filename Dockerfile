@@ -31,4 +31,4 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 # Run the app
 ENTRYPOINT ["python3"]
-CMD ["app.py"]
+CMD ["app.py", "--share"]

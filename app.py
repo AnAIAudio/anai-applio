@@ -5,7 +5,7 @@ import logging
 
 from typing import Any
 
-DEFAULT_SERVER_NAME = "127.0.0.1"
+DEFAULT_SERVER_NAME = "0.0.0.0"
 DEFAULT_PORT = 6969
 MAX_PORT_ATTEMPTS = 10
 
