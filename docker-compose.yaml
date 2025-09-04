@@ -4,11 +4,15 @@ services:
       context: ./
       dockerfile: Dockerfile
     ports:
-      - "6969"
+      - "6969:6969"
+    container_name: anai-applio
+    restart: always
+    pid: host
+    privileged: true
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
               count: 1
-              capabilities: [gpu]
+              capabilities: [ gpu ]
