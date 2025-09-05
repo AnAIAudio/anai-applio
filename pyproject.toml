@@ -39,6 +39,9 @@ dependencies = [
     "wheel>=0.45.1",
     "wget",
     "black>=25.1.0",
+    "boto3>=1.40.24",
+    "botocore>=1.40.24",
+    "boto3-stubs[secretsmanager]>=1.40.24",
 ]
 
 [tool.uv.sources]
