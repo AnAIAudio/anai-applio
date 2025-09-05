@@ -43,7 +43,7 @@ run_prerequisites_script(
 # Initialize i18n
 from assets.i18n.i18n import I18nAuto
 
-i18n = I18nAuto()
+i18n = I18nAuto(language="ko")
 
 # Start Discord presence if enabled
 from tabs.settings.sections.presence import load_config_presence
@@ -65,9 +65,11 @@ my_applio = loadThemes.load_theme() or "ParityError/Interstellar"
 
 # Define Gradio interface
 with gr.Blocks(
-        theme=my_applio, title="Applio", css="footer{display:none !important}",
+    theme=gr.themes.Glass(),
+    title="Applio",
+    css="footer{display:none !important}",
 ) as Applio:
-    gr.Markdown("# Applio")
+    gr.Markdown("# AnAI Applio")
     gr.Markdown(
         i18n(
             "A simple, high-quality voice conversion tool focused on ease of use and performance."
@@ -75,7 +77,7 @@ with gr.Blocks(
     )
     gr.Markdown(
         i18n(
-            "[Support](https://discord.gg/urxFjYmYYh) — [GitHub](https://github.com/IAHispano/Applio)"
+            "[Support](https://discord.gg/urxFjYmYYh) — [GitHub](https://github.com/AnAIAudio/anai-applio)"
         )
     )
     with gr.Tab(i18n("Inference")):
