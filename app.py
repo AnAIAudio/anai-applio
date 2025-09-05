@@ -30,6 +30,22 @@ secret_info = get_aws_secret(
         "production/rds/anai-wave" if run_env == "production" else "dev/rds/anai-dev"
     )
 )
+encrypt_key = secret_info["encrypt_key"]
+salt_key = secret_info["salt_key"]
+username = secret_info["username"]
+password = secret_info["password"]
+dbInstanceIdentifier = secret_info["dbInstanceIdentifier"]
+engine = secret_info["engine"]
+host = secret_info["host"]
+port = secret_info["port"]
+elevenlabs_api_key = secret_info["elevenlabs_api_key"]
+openai_key = secret_info["openai_key"]
+claude_key = secret_info["claude_key"]
+grok_key = secret_info["grok_key"]
+local_ai_key = secret_info["local_ai_key"]
+auphonic_key = secret_info["auphonic_key"]
+webhook_url = secret_info["webhook_url"]
+db_name = "anai"
 
 # Import Tabs
 from tabs.inference.inference import inference_tab

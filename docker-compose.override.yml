@@ -1,0 +1,35 @@
+﻿services:
+  align-service:
+    volumes:
+      - "/C/Users/kangh/.aws:/root/.aws:ro"
+      - shared-volume:/app/shared
+      - ./align-service/temp:/app/temp
+      - ./align-service/logs:/app/logs
+  history-service:
+    volumes:
+      - "/C/Users/kangh/.aws:/root/.aws:ro"
+      - shared-volume:/app/shared
+  auphonic-service:
+    volumes:
+      - "/C/Users/kangh/.aws:/root/.aws:ro"
+      - shared-volume:/app/shared
+  separate-service:
+    volumes:
+      - "/C/Users/kangh/.aws:/root/.aws:ro"
+      - shared-volume:/app/shared
+  gateway-service:
+    volumes:
+      - "/C/Users/kangh/.aws:/root/.aws:ro"
+      - shared-volume:/app/shared
+  timbre-service:
+    volumes:
+      - "/C/Users/kangh/.aws:/root/.aws:ro"
+      - shared-volume:/app/shared
+  tts-service:
+    volumes:
+      - "/C/Users/kangh/.aws:/root/.aws:ro"
+      - shared-volume:/app/shared
+  voix-service:
+    volumes:
+      - "/C/Users/kangh/.aws:/root/.aws:ro"
+      - shared-volume:/app/shared
