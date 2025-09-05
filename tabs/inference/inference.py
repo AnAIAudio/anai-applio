@@ -350,24 +350,35 @@ async def get_timbre_models():
     model_list = []
     if data and getattr(data, "model_list", None):
         model_list = [
-            (getattr(model, "title", None), getattr(model, "id", ""))
+            (
+                getattr(model, "title", None),
+                (getattr(model, "title", None), getattr(model, "id", "")),
+            )
             for model in data.model_list
         ]
+
     return gr.update(choices=model_list)
 
 
-def on_timbre_select(selected_value: str, evt: gr.SelectData):
+def on_timbre_select(selected_value, evt: gr.SelectData):
     from utils.aws_util import download_from_s3
 
-    pth_path = f"timbre/{selected_value}/{selected_value}.pth"
-    index_path = f"timbre/{selected_value}/{selected_value}.index"
+    # selected_value가 (title, id)로 넘어오도록 변경했으므로 처리
+    if isinstance(selected_value, (list, tuple)) and len(selected_value) >= 2:
+        selected_title, selected_id = selected_value[0], selected_value[1]
+    else:
+        # 혹시 기존처럼 id만 넘어오는 경우 대비
+        selected_title, selected_id = None, str(selected_value)
 
-    download_path = os.path.join(model_root_relative, selected_value)
+    pth_path = f"timbre/{selected_id}/{selected_id}.pth"
+    index_path = f"timbre/{selected_id}/{selected_id}.index"
+
+    download_path = os.path.join(model_root_relative, selected_id)
     if not os.path.exists(download_path):
         os.makedirs(download_path, exist_ok=True)
 
-    log_pth_path = f"{download_path}/{selected_value}.pth"
-    log_index_path = f"{download_path}/{selected_value}.index"
+    log_pth_path = f"{download_path}/{selected_id}.pth"
+    log_index_path = f"{download_path}/{selected_id}.index"
 
     download_from_s3(
         object_name=pth_path,
@@ -380,10 +391,13 @@ def on_timbre_select(selected_value: str, evt: gr.SelectData):
         file_dir_name=log_index_path,
     )
 
-    model_choices = sorted(names, key=lambda x: extract_model_and_epoch(x)).append(
-        log_pth_path
-    )
-    index_choices = get_indexes().append(log_index_path)
+    model_choices = sorted(names, key=lambda x: extract_model_and_epoch(x))
+    if log_pth_path not in model_choices:
+        model_choices.append(log_pth_path)
+
+    index_choices = get_indexes()
+    if log_index_path not in index_choices:
+        index_choices.append(log_index_path)
 
     return (
         gr.update(choices=model_choices, value=log_pth_path),
