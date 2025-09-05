@@ -350,35 +350,33 @@ async def get_timbre_models():
     model_list = []
     if data and getattr(data, "model_list", None):
         model_list = [
-            (
-                getattr(model, "title", None),
-                (getattr(model, "title", None), getattr(model, "id", "")),
-            )
+            (getattr(model, "title", None), getattr(model, "id", ""))
             for model in data.model_list
         ]
 
-    return gr.update(choices=model_list)
+    return gr.update(choices=model_list, value=None), model_list
 
 
-def on_timbre_select(selected_value, evt: gr.SelectData):
+def on_timbre_select(selected_value, models_state, evt: gr.SelectData):
     from utils.aws_util import download_from_s3
 
-    # selected_value가 (title, id)로 넘어오도록 변경했으므로 처리
-    if isinstance(selected_value, (list, tuple)) and len(selected_value) >= 2:
-        selected_title, selected_id = selected_value[0], selected_value[1]
-    else:
-        # 혹시 기존처럼 id만 넘어오는 경우 대비
-        selected_title, selected_id = None, str(selected_value)
+    # models_state에서 id를 활용해 Title 찾기
+    selected_title = None
+    if isinstance(models_state, (list, tuple)):
+        for t in models_state:
+            if isinstance(t, (list, tuple)) and len(t) >= 2 and t[1] == selected_value:
+                selected_title = t[0]
+                break
 
-    pth_path = f"timbre/{selected_id}/{selected_id}.pth"
-    index_path = f"timbre/{selected_id}/{selected_id}.index"
+    pth_path = f"timbre/{selected_value}/{selected_value}.pth"
+    index_path = f"timbre/{selected_value}/{selected_value}.index"
 
-    download_path = os.path.join(model_root_relative, selected_id)
+    download_path = os.path.join(model_root_relative, selected_value)
     if not os.path.exists(download_path):
         os.makedirs(download_path, exist_ok=True)
 
-    log_pth_path = f"{download_path}/{selected_id}.pth"
-    log_index_path = f"{download_path}/{selected_id}.index"
+    log_pth_path = f"{download_path}/{selected_value}.pth"
+    log_index_path = f"{download_path}/{selected_value}.index"
 
     download_from_s3(
         object_name=pth_path,
@@ -415,12 +413,13 @@ def inference_tab():
                 choices=[],
                 interactive=True,
             )
+            anai_models_state = gr.State(value=[])
         with gr.Row():
             get_model_button = gr.Button(i18n("Get Timbre model list"))
             get_model_button.click(
                 get_timbre_models,
                 inputs=[],
-                outputs=[anai_model_list],
+                outputs=[anai_model_list, anai_models_state],
             )
         with gr.Row():
             model_file = gr.Dropdown(
@@ -443,7 +442,7 @@ def inference_tab():
 
             anai_model_list.select(
                 on_timbre_select,
-                inputs=[anai_model_list],
+                inputs=[anai_model_list, anai_models_state],
                 outputs=[model_file, index_file],
             )
 
