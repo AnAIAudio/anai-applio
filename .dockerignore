@@ -1,0 +1,44 @@
+# VCS
+.git
+.gitmodules
+.gitignore
+
+# 가상환경/패키지/캐시
+.venv
+.env
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+.dist-info/
+.uv/
+.uv_cache/
+.cache/
+.cache/**
+
+# 편집기/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 운영/로그/런타임 산출물
+logs/
+*.log
+
+# OS/기타 잡파일
+.DS_Store
+Thumbs.db
+
+# 빌드 산출물
+build/
+dist/
+site/
+htmlcov/
+coverage.xml
+.pytest_cache/
+.mypy_cache/
+.tox/

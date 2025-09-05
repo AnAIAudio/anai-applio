@@ -15,9 +15,8 @@ RUN apt-get update && apt-get install -y \
     cmake \
     tk \
     ffmpeg \
-    apt clean && rm -rf /var/lib/apt/lists/*
+    && apt clean && rm -rf /var/lib/apt/lists/*
 
-# Copy application files into the container
 COPY . .
 
 RUN --mount=type=cache,target=/root/.cache/uv \
