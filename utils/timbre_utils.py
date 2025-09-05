@@ -1,7 +1,7 @@
+import datetime
 from typing import List, Optional
 import httpx
 from pydantic import BaseModel, Field, ConfigDict
-from datetime import datetime
 
 
 class VoixLanguageModel(BaseModel):
@@ -17,8 +17,8 @@ class ModelMatchLanguage(VoixLanguageModel):
 
 class TimbreModel(BaseModel):
     id: str = ""
-    size: int = 0
-    index_file_size: int = 0
+    size: float = 0
+    index_file_size: float = 0
     value: str = ""
     title: str = ""
     description: str = ""
@@ -31,7 +31,7 @@ class TimbreModel(BaseModel):
 
     voice_category: str = ""
     voice_gender: str = ""
-    created_date: datetime = Field(default_factory=datetime.utcnow)
+    created_date: datetime.datetime = Field(default_factory=datetime.datetime.now)
 
     model_type_id: str = ""
     model_product_id: str = ""
@@ -88,9 +88,13 @@ async def fetch_models():
         "text_order": now_order["text_order"],
     }
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.get(timbre_api_url, params=params)
-        resp.raise_for_status()
-        data = resp.json()
-        data_wrapper = ApiWrappedResponse(**data)
-        return data_wrapper.data
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.get(timbre_api_url, params=params)
+            resp.raise_for_status()
+            data = resp.json()
+            data_wrapper = ApiWrappedResponse(**data)
+            return data_wrapper.data
+    except Exception:
+        print(f"Error fetching models from {timbre_api_url}")
+        raise

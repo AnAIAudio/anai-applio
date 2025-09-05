@@ -353,7 +353,21 @@ async def get_timbre_models():
     from utils.timbre_utils import fetch_models
 
     data = await fetch_models()
-    return data
+    choices = []
+    if data and getattr(data, "model_list", None):
+        # 표시값 우선순위: value > title > id
+        choices = [
+            (
+                getattr(m, "value", None)
+                or getattr(m, "title", None)
+                or getattr(m, "id", "")
+            )
+            for m in data.model_list
+        ]
+        choices = [c for c in choices if c]  # 빈 문자열 제거
+
+    # Dropdown의 choices와 value를 동시에 갱신
+    return gr.update(choices=choices, value=(choices[0] if choices else None))
 
 
 # Inference tab
