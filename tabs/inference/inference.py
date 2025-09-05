@@ -5,14 +5,8 @@ import shutil
 import datetime
 import json
 import torch
-
-from core import (
-    run_infer_script,
-    run_batch_infer_script,
-)
-
+from core import run_infer_script, run_batch_infer_script
 from assets.i18n.i18n import I18nAuto
-
 from rvc.lib.utils import format_title
 from tabs.settings.sections.restart import stop_infer
 
@@ -353,21 +347,43 @@ async def get_timbre_models():
     from utils.timbre_utils import fetch_models
 
     data = await fetch_models()
-    choices = []
+    model_list = []
     if data and getattr(data, "model_list", None):
-        # 표시값 우선순위: value > title > id
-        choices = [
-            (
-                getattr(m, "value", None)
-                or getattr(m, "title", None)
-                or getattr(m, "id", "")
-            )
-            for m in data.model_list
+        model_list = [
+            (getattr(model, "title", None), getattr(model, "id", ""))
+            for model in data.model_list
         ]
-        choices = [c for c in choices if c]  # 빈 문자열 제거
+    return gr.update(choices=model_list)
 
-    # Dropdown의 choices와 value를 동시에 갱신
-    return gr.update(choices=choices, value=(choices[0] if choices else None))
+
+def on_timbre_select(selected_value: str, evt: gr.SelectData):
+    from utils.aws_util import download_from_s3
+
+    pth_path = f"timbre/{selected_value}/{selected_value}.pth"
+    index_path = f"timbre/{selected_value}/{selected_value}.index"
+
+    download_path = os.path.join(model_root_relative, selected_value)
+    if not os.path.exists(download_path):
+        os.makedirs(download_path, exist_ok=True)
+
+    log_pth_path = f"{download_path}/{selected_value}.pth"
+    log_index_path = f"{download_path}/{selected_value}.index"
+
+    download_from_s3(
+        object_name=pth_path,
+        bucket="anaitimbre",
+        file_dir_name=log_pth_path,
+    )
+    download_from_s3(
+        object_name=index_path,
+        bucket="anaitimbre",
+        file_dir_name=log_index_path,
+    )
+
+    return (
+        gr.update(value=log_pth_path),
+        gr.update(value=log_index_path),
+    )
 
 
 # Inference tab
@@ -405,6 +421,13 @@ def inference_tab():
                 interactive=True,
                 allow_custom_value=True,
             )
+
+            anai_model_list.select(
+                on_timbre_select,
+                inputs=[anai_model_list],
+                outputs=[model_file, index_file],
+            )
+
         with gr.Row():
             unload_button = gr.Button(i18n("Unload Voice"))
             refresh_button = gr.Button(i18n("Refresh"))
