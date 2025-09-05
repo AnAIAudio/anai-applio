@@ -17,14 +17,17 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     && apt clean && rm -rf /var/lib/apt/lists/*
 
+COPY pyproject.toml uv.lock ./
+
+# 의존성만 우선 설치
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-install-project --no-dev
+
 COPY . .
 
+# 앱 설치
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-install-project --no-dev   # deps만
-
-# 프로젝트 설치
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev                        # 앱 설치
+    uv sync --frozen --no-dev
 
 # Define volumes for persistent storage
 VOLUME ["/app/logs/"]
