@@ -321,5 +321,6 @@
     "Set the autotune strength - the more you increase it the more it will snap to the chromatic grid.": "오토튠 강도를 설정하세요 - 값을 높일수록 반음계 그리드에 더 잘 맞춰집니다.",
     "Model Author Name": "모델 작성자 이름",
     "The name that will appear in the model information.": "모델 정보에 표시될 이름입니다.",
-    "Set name": "이름 설정"
+    "Set name": "이름 설정",
+    "Get Timbre model list": "음색 목록 가져오기"
   }

@@ -349,9 +349,30 @@ def get_speakers_id(model):
         return [0]
 
 
+async def get_timbre_models():
+    from utils.timbre_utils import fetch_models
+
+    data = await fetch_models()
+    return data
+
+
 # Inference tab
 def inference_tab():
     with gr.Column():
+        with gr.Row():
+            anai_model_list = gr.Dropdown(
+                label=i18n("The timbre models that AnAI has"),
+                info=i18n("Select the voice model to use for the conversion."),
+                choices=[],
+                interactive=True,
+            )
+        with gr.Row():
+            get_model_button = gr.Button(i18n("Get Timbre model list"))
+            get_model_button.click(
+                get_timbre_models,
+                inputs=[],
+                outputs=[anai_model_list],
+            )
         with gr.Row():
             model_file = gr.Dropdown(
                 label=i18n("Voice Model"),
