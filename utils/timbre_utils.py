@@ -72,7 +72,7 @@ async def fetch_models():
     voice_category = None  # 혹은 문자열
     voice_gender = None  # 혹은 문자열
     page = 1
-    current_page_size = 20
+    current_page_size = 999
     now_order = {
         "date_order": "desc",
         "text_order": "asc",

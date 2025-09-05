@@ -380,9 +380,14 @@ def on_timbre_select(selected_value: str, evt: gr.SelectData):
         file_dir_name=log_index_path,
     )
 
+    model_choices = sorted(names, key=lambda x: extract_model_and_epoch(x)).append(
+        log_pth_path
+    )
+    index_choices = get_indexes().append(log_index_path)
+
     return (
-        gr.update(value=log_pth_path),
-        gr.update(value=log_index_path),
+        gr.update(choices=model_choices, value=log_pth_path),
+        gr.update(choices=index_choices, value=log_index_path),
     )
 
 
