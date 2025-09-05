@@ -38,6 +38,7 @@ dependencies = [
     "tqdm",
     "wheel>=0.45.1",
     "wget",
+    "black>=25.1.0",
 ]
 
 [tool.uv.sources]
