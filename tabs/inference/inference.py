@@ -302,35 +302,39 @@ def match_index(model_file_value):
 
 
 def match_index_using_guid(model_uuid):
-    if model_uuid:
-        # models_state에서 id를 활용해 Title 찾기
-        selected_title = None
-        if isinstance(model_uuid, (list, tuple)):
-            for t in model_uuid:
-                if (
-                    isinstance(t, (list, tuple))
-                    and len(t) >= 2
-                    and t[1] == model_uuid
-                ):
-                    selected_title = t[0]
-                    break
+    target_dir = os.path.join(model_root, model_uuid)
+    if not os.path.isdir(target_dir):
+        return "", ""
 
-        model_folder = os.path.dirname(selected_title)
-        model_name = os.path.basename(selected_title)
-        index_files = get_indexes()
-        pattern = r"^(.*?)_"
-        match = re.match(pattern, model_name)
+    pth_candidates = []
+    index_candidates = []
 
-        # model_root 에서 model_uuid이름을 가진 디렉토리를 찾아서 내부의 pth, index 파일 경로를 튜플로 리턴
+    for root, _, files in os.walk(target_dir):
+        for name in files:
+            full_path = os.path.join("logs", model_uuid, name)
+            lname = name.lower()
 
-        for index_file in index_files:
-            if os.path.dirname(index_file) == model_folder:
-                return index_file
-            elif match and match.group(1) in os.path.basename(index_file):
-                return index_file
-            elif model_name in os.path.basename(index_file):
-                return index_file
-    return ""
+            # .pth 모델 파일 (일반적으로 판별되는 보조 네트워크 접두사는 제외)
+            if lname.endswith(".pth") and not (
+                name.startswith("G_") or name.startswith("D_")
+            ):
+                try:
+                    mtime = os.path.getmtime(full_path)
+                except OSError:
+                    mtime = 0.0
+                pth_candidates.append((mtime, full_path))
+
+            if lname.endswith(".index") or "index" in lname:
+                try:
+                    mtime = os.path.getmtime(full_path)
+                except OSError:
+                    mtime = 0.0
+                index_candidates.append((mtime, full_path))
+
+    pth_path = max(pth_candidates)[1] if pth_candidates else ""
+    index_path = max(index_candidates)[1] if index_candidates else ""
+
+    return pth_path, index_path
 
 
 def create_folder_and_move_files(folder_name, bin_file, config_file):
