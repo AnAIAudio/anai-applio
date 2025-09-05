@@ -23,4 +23,5 @@ env
 venv
 .venv
 
+# Below is AnAI Custom
 .idea/**/*

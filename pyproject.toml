@@ -1,0 +1,58 @@
+[project]
+name = "anai-applio"
+version = "1.0.0"
+description = "Applio — RVC voice conversion"
+requires-python = ">=3.10"
+readme = "README.md"
+dependencies = [
+    "numpy==1.26.4",
+    "requests>=2.31.0,<2.32.0",
+    "tqdm",
+    "wget",
+    "ffmpeg-python>=0.2.0",
+    "faiss-cpu==1.7.3",
+    "librosa==0.11.0",
+    "scipy==1.11.1",
+    "soundfile==0.12.1",
+    "noisereduce",
+    "pedalboard",
+    "stftpitchshift",
+    "soxr",
+    "numba==0.61.0",
+    "torch==2.7.1",
+    "torchaudio==2.7.1",
+    "torchvision==0.22.1",
+    "torchcrepe==0.0.23",
+    "torchfcpe",
+    "einops",
+    "transformers==4.44.2",
+    # Visualization / UI
+    "matplotlib==3.7.2",
+    "tensorboard",
+    "gradio==5.23.1",
+    "tensorboardX",
+    "edge-tts==7.2.0",
+    "pypresence",
+    "beautifulsoup4",
+    "omegaconf>=2.0.6",
+    "certifi>=2025.8.3",
+    "antlr4-python3-runtime==4.8",
+    "pyyaml>=6.0.2",
+    "wheel>=0.45.1",
+]
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cu128", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+torchvision = [
+    { index = "pytorch-cu128", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+torchaudio = [
+    { index = "pytorch-cu128", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
