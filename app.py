@@ -2,7 +2,6 @@ import gradio as gr
 import sys
 import os
 import logging
-
 from typing import Any
 
 DEFAULT_SERVER_NAME = "0.0.0.0"
@@ -19,6 +18,18 @@ sys.path.append(now_dir)
 
 # Zluda hijack
 import rvc.lib.zluda
+
+import os
+from dotenv import load_dotenv
+from utils.aws_util import get_aws_secret
+
+load_dotenv(verbose=True)
+run_env = os.getenv("RUN_ENV")
+secret_info = get_aws_secret(
+    secret_name=(
+        "production/rds/anai-wave" if run_env == "production" else "dev/rds/anai-dev"
+    )
+)
 
 # Import Tabs
 from tabs.inference.inference import inference_tab

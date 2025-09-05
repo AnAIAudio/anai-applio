@@ -9,6 +9,8 @@ services:
     restart: always
     pid: host
     privileged: true
+    volumes:
+      - "${HOME}/.aws:/root/.aws:ro"
     deploy:
       resources:
         reservations:
