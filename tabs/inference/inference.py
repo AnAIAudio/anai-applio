@@ -56,6 +56,20 @@ names = [
     )
 ]
 
+
+def read_text(path: str) -> str:
+    with open(path, encoding="utf-8") as f:
+        return f.read()
+
+
+# read_text(os.path.join(root, f"{os.path.splitext(model_file)[0]}.txt")
+titles = [
+    (read_text(os.path.join(root, file)), os.path.splitext(file)[0])
+    for root, _, files in os.walk(model_root_relative, topdown=False)
+    for file in files
+    if (file.endswith(".txt"))
+]
+
 default_weight = names[0] if names else None
 
 indexes_list = [
@@ -287,6 +301,38 @@ def match_index(model_file_value):
     return ""
 
 
+def match_index_using_guid(model_uuid):
+    if model_uuid:
+        # models_state에서 id를 활용해 Title 찾기
+        selected_title = None
+        if isinstance(model_uuid, (list, tuple)):
+            for t in model_uuid:
+                if (
+                    isinstance(t, (list, tuple))
+                    and len(t) >= 2
+                    and t[1] == model_uuid
+                ):
+                    selected_title = t[0]
+                    break
+
+        model_folder = os.path.dirname(selected_title)
+        model_name = os.path.basename(selected_title)
+        index_files = get_indexes()
+        pattern = r"^(.*?)_"
+        match = re.match(pattern, model_name)
+
+        # model_root 에서 model_uuid이름을 가진 디렉토리를 찾아서 내부의 pth, index 파일 경로를 튜플로 리턴
+
+        for index_file in index_files:
+            if os.path.dirname(index_file) == model_folder:
+                return index_file
+            elif match and match.group(1) in os.path.basename(index_file):
+                return index_file
+            elif model_name in os.path.basename(index_file):
+                return index_file
+    return ""
+
+
 def create_folder_and_move_files(folder_name, bin_file, config_file):
     if not folder_name:
         return "Folder name must not be empty."
@@ -431,6 +477,12 @@ def inference_tab():
         with gr.Row():
             model_text = gr.Text()
             index_text = gr.Text()
+            model_title_text = gr.Dropdown(
+                label=i18n("Voice Model"),
+                info=i18n("Select the voice model to use for the conversion."),
+                choices=titles,
+                interactive=True,
+            )
         with gr.Row():
             model_file = gr.Dropdown(
                 label=i18n("Voice Model"),
@@ -438,8 +490,8 @@ def inference_tab():
                 choices=sorted(names, key=lambda x: extract_model_and_epoch(x)),
                 interactive=True,
                 value=default_weight,
-                allow_custom_value=True,
             )
+            # allow_custom_value=True,
 
             index_file = gr.Dropdown(
                 label=i18n("Index File"),
@@ -447,8 +499,8 @@ def inference_tab():
                 choices=get_indexes(),
                 value=match_index(default_weight) if default_weight else "",
                 interactive=True,
-                allow_custom_value=True,
             )
+            # allow_custom_value=True,
 
             anai_model_list.select(
                 on_timbre_select,
@@ -477,6 +529,11 @@ def inference_tab():
                 fn=lambda model_file_value: match_index(model_file_value),
                 inputs=[model_file],
                 outputs=[index_file],
+            )
+            model_title_text.select(
+                fn=lambda model_file_value: match_index_using_guid(model_file_value),
+                inputs=[model_title_text],
+                outputs=[model_file, index_file],
             )
 
     # Single inference tab
