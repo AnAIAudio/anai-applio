@@ -389,6 +389,11 @@ def on_timbre_select(selected_value, models_state, evt: gr.SelectData):
         file_dir_name=log_index_path,
     )
 
+    # 선택된 제목(selected_title)을 내용으로 하는 텍스트 파일을 download_path 안에 생성
+    note_file_path = os.path.join(download_path, f"{selected_value}.txt")
+    with open(note_file_path, "w", encoding="utf-8") as f:
+        f.write(str(selected_title) if selected_title is not None else "")
+
     model_choices = sorted(names, key=lambda x: extract_model_and_epoch(x))
     if log_pth_path not in model_choices:
         model_choices.append(log_pth_path)
@@ -400,6 +405,8 @@ def on_timbre_select(selected_value, models_state, evt: gr.SelectData):
     return (
         gr.update(choices=model_choices, value=log_pth_path),
         gr.update(choices=index_choices, value=log_index_path),
+        selected_title,
+        selected_title,
     )
 
 
@@ -422,6 +429,9 @@ def inference_tab():
                 outputs=[anai_model_list, anai_models_state],
             )
         with gr.Row():
+            model_text = gr.Text()
+            index_text = gr.Text()
+        with gr.Row():
             model_file = gr.Dropdown(
                 label=i18n("Voice Model"),
                 info=i18n("Select the voice model to use for the conversion."),
@@ -443,7 +453,12 @@ def inference_tab():
             anai_model_list.select(
                 on_timbre_select,
                 inputs=[anai_model_list, anai_models_state],
-                outputs=[model_file, index_file],
+                outputs=[
+                    model_file,
+                    index_file,
+                    model_text,
+                    index_text,
+                ],
             )
 
         with gr.Row():
