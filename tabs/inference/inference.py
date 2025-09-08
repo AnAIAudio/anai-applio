@@ -8,6 +8,10 @@ import torch
 from core import run_infer_script, run_batch_infer_script
 from assets.i18n.i18n import I18nAuto
 from rvc.lib.utils import format_title
+from tabs.inference.infer_utils.batch_control import (
+    prepare_batch_from_zip,
+    batch_cleanup_temp,
+)
 from tabs.settings.sections.restart import stop_infer
 
 i18n = I18nAuto()
@@ -1185,6 +1189,40 @@ def inference_tab():
     # Batch inference tab
     with gr.Tab(i18n("Batch")):
         with gr.Row():
+            # 선택한 항목을 사용자가 zip 파일을 올리면 임시 디렉토리에 zip파일을 업로드하고,
+            # 파일을 압축 해제해서 해당 경로를 input_folder_batch에 넣어주는 코드와 output_folder_batch도
+            # 임시 디렉토리 밑에 converted 디렉토리를 만들어서 output_folder_batch를 설정하고
+            # convert가 완료되면 이전에 만들었던 임시디렉토리/converted 디렉토리를 압축해서 사용자가 다운로드 받을 수 있게 변경해줘
+
+            with gr.Column():
+                zip_upload = gr.File(
+                    label=i18n("Upload ZIP to prepare batch"),
+                    file_types=[".zip"],
+                    type="filepath",
+                )
+                with gr.Row():
+                    prepare_btn = gr.Button(
+                        i18n("Prepare from ZIP"),
+                        variant="primary",
+                    )
+                    cleanup_btn = gr.Button(
+                        i18n("Cleanup temp directory"),
+                        variant="secondary",
+                    )
+
+                prep_status = gr.Textbox(
+                    label=i18n("Status"),
+                    lines=4,
+                    interactive=False,
+                )
+
+                # 내부 상태: temp_dir, extracted_dir, converted_dir, converted_zip_path
+                temp_state = gr.State(value=None)
+                extracted_state = gr.State(value=None)
+                converted_state = gr.State(value=None)
+                converted_zip_state = gr.State(value=None)
+
+        with gr.Row():
             with gr.Column():
                 input_folder_batch = gr.Textbox(
                     label=i18n("Input Folder"),
@@ -1202,6 +1240,34 @@ def inference_tab():
                     value=os.path.join(now_dir, "assets", "audios"),
                     interactive=True,
                 )
+
+                prepare_btn.click(
+                    fn=prepare_batch_from_zip,
+                    inputs=[zip_upload],
+                    outputs=[
+                        input_folder_batch,
+                        output_folder_batch,
+                        temp_state,
+                        extracted_state,
+                        converted_state,
+                        converted_zip_state,
+                        prep_status,
+                    ],
+                )
+                cleanup_btn.click(
+                    fn=batch_cleanup_temp,
+                    inputs=[temp_state],
+                    outputs=[
+                        input_folder_batch,
+                        output_folder_batch,
+                        temp_state,
+                        extracted_state,
+                        converted_state,
+                        converted_zip_state,
+                        prep_status,
+                    ],
+                )
+
         with gr.Accordion(i18n("Advanced Settings"), open=False):
             with gr.Column():
                 clear_outputs_batch = gr.Button(
