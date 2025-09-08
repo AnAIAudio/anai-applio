@@ -2374,18 +2374,6 @@ def inference_tab():
         fn=batch_pack_converted,  # 이전에 정의한 패키징 함수
         inputs=[temp_state, converted_state, converted_zip_state],
         outputs=[download_converted_zip, prep_status],
-    ).then(
-        fn=batch_cleanup_temp,
-        inputs=[temp_state],
-        outputs=[
-            input_folder_batch,
-            output_folder_batch,
-            temp_state,
-            extracted_state,
-            converted_state,
-            converted_zip_state,
-            prep_status,
-        ],
     )
 
     convert_button_batch.click(

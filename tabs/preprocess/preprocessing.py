@@ -1,6 +1,7 @@
 import os
 import sys
 import gradio as gr
+from tabs.preprocess.audio_processing.cleanup_temp_dir import cleanup_temp_dir_tab
 from tabs.preprocess.audio_processing.merge_audio import merge_audio_tab
 from assets.i18n.i18n import I18nAuto
 
@@ -12,3 +13,5 @@ sys.path.append(now_dir)
 def preprocessing_tab():
     with gr.TabItem(i18n("Merge Audio")):
         merge_audio_tab()
+    with gr.TabItem(i18n("Temp directory Clean up")):
+        cleanup_temp_dir_tab()
