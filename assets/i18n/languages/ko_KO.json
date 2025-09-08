@@ -324,5 +324,8 @@
   "Set name": "이름 설정",
   "Get Timbre model list": "음색 목록 가져오기",
   "Preprocessing": "전처리",
-  "Merge Audio": "오디오 이어붙이기"
+  "Merge Audio": "오디오 이어붙이기",
+  "Temp directory Clean up": "임시 폴더 정리",
+  "Merged audio file": "병합된 WAV 파일",
+  "Status": "상태"
 }
