@@ -4,6 +4,7 @@ import os
 import logging
 from typing import Any
 
+
 DEFAULT_SERVER_NAME = "0.0.0.0"
 DEFAULT_PORT = 6969
 MAX_PORT_ATTEMPTS = 10
@@ -57,6 +58,7 @@ from tabs.tts.tts import tts_tab
 from tabs.voice_blender.voice_blender import voice_blender_tab
 from tabs.plugins.plugins import plugins_tab
 from tabs.settings.settings import settings_tab
+from tabs.preprocess.preprocessing import preprocessing_tab
 
 # Run prerequisites
 from core import run_prerequisites_script
@@ -135,7 +137,7 @@ with gr.Blocks(
         settings_tab()
 
     with gr.Tab(i18n("Preprocessing")):
-        settings_tab()
+        preprocessing_tab()
 
     gr.Markdown(
         """
