@@ -209,6 +209,13 @@ def change_choices(model):
         and "_output" not in name
     ]
 
+    titles = [
+        (read_text(os.path.join(root, file)), os.path.splitext(file)[0])
+        for root, _, files in os.walk(model_root_relative, topdown=False)
+        for file in files
+        if (file.endswith(".txt"))
+    ]
+
     return (
         {"choices": sorted(names), "__type__": "update"},
         {"choices": sorted(indexes_list), "__type__": "update"},
@@ -229,6 +236,7 @@ def change_choices(model):
             ),
             "__type__": "update",
         },
+        {"choices": sorted(titles), "__type__": "update"},
     )
 
 
@@ -455,8 +463,6 @@ def on_timbre_select(selected_value, models_state, evt: gr.SelectData):
     return (
         gr.update(choices=model_choices, value=log_pth_path),
         gr.update(choices=index_choices, value=log_index_path),
-        selected_title,
-        selected_title,
     )
 
 
@@ -479,8 +485,6 @@ def inference_tab():
                 outputs=[anai_model_list, anai_models_state],
             )
         with gr.Row():
-            model_text = gr.Text()
-            index_text = gr.Text()
             model_title_text = gr.Dropdown(
                 label=i18n("Voice Model"),
                 info=i18n("Select the voice model to use for the conversion."),
@@ -512,8 +516,6 @@ def inference_tab():
                 outputs=[
                     model_file,
                     index_file,
-                    model_text,
-                    index_text,
                 ],
             )
 
@@ -2105,7 +2107,7 @@ def inference_tab():
     refresh_button.click(
         fn=change_choices,
         inputs=[model_file],
-        outputs=[model_file, index_file, audio, sid, sid_batch],
+        outputs=[model_file, index_file, audio, sid, sid_batch, model_title_text],
     )
     audio.change(
         fn=output_path_fn,
