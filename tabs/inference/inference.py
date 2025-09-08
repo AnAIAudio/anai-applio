@@ -11,6 +11,7 @@ from rvc.lib.utils import format_title
 from tabs.inference.infer_utils.batch_control import (
     prepare_batch_from_zip,
     batch_cleanup_temp,
+    batch_pack_converted,
 )
 from tabs.settings.sections.restart import stop_infer
 
@@ -1173,7 +1174,7 @@ def inference_tab():
             info=i18n(
                 "Please ensure compliance with the terms and conditions detailed in [this document](https://github.com/IAHispano/Applio/blob/main/TERMS_OF_USE.md) before proceeding with your inference."
             ),
-            value=False,
+            value=True,
             interactive=True,
         )
 
@@ -1860,6 +1861,10 @@ def inference_tab():
         convert_button_batch = gr.Button(i18n("Convert"))
         stop_button = gr.Button(i18n("Stop convert"), visible=False)
         stop_button.click(fn=stop_infer, inputs=[], outputs=[])
+        download_converted_zip = gr.File(
+            label=i18n("Converted ZIP (download)"),
+            interactive=False,
+        )
 
         with gr.Row():
             vc_output3 = gr.Textbox(
@@ -2365,7 +2370,24 @@ def inference_tab():
             sid_batch,
         ],
         outputs=[vc_output3],
+    ).then(
+        fn=batch_pack_converted,  # 이전에 정의한 패키징 함수
+        inputs=[temp_state, converted_state, converted_zip_state],
+        outputs=[download_converted_zip, prep_status],
+    ).then(
+        fn=batch_cleanup_temp,
+        inputs=[temp_state],
+        outputs=[
+            input_folder_batch,
+            output_folder_batch,
+            temp_state,
+            extracted_state,
+            converted_state,
+            converted_zip_state,
+            prep_status,
+        ],
     )
+
     convert_button_batch.click(
         fn=enable_stop_convert_button,
         inputs=[],

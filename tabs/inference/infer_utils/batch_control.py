@@ -6,6 +6,45 @@ from assets.i18n.i18n import I18nAuto
 i18n = I18nAuto()
 
 
+def batch_pack_converted(
+    temp_dir: str | None, converted_dir: str | None, converted_zip: str | None
+):
+    """
+    Convert가 완료된 후 converted_dir을 ZIP으로 묶어 다운로드 제공.
+    """
+    import zipfile
+
+    if not temp_dir or not converted_dir:
+        return None, i18n("Nothing to package: prepare and convert first.")
+    if not os.path.exists(converted_dir):
+        return None, i18n("Output folder not found. Make sure conversion is completed.")
+
+    # ZIP 경로 준비
+    if not converted_zip:
+        converted_zip = os.path.join(temp_dir, "converted.zip")
+
+    # 기존 파일 삭제 후 재생성
+    try:
+        if os.path.exists(converted_zip):
+            os.remove(converted_zip)
+        with zipfile.ZipFile(
+            converted_zip, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6
+        ) as zf:
+            for root, _, files in os.walk(converted_dir):
+                for f in files:
+                    fpath = os.path.join(root, f)
+                    # ZIP 내 경로는 converted/ 이하로
+                    arcname = os.path.relpath(
+                        fpath, start=os.path.dirname(converted_dir)
+                    )
+                    zf.write(fpath, arcname)
+        return converted_zip, i18n(
+            "Packaging completed. You can download the ZIP file."
+        )
+    except Exception as e:
+        return None, f"{i18n('Failed to package converted folder')}: {e}"
+
+
 def batch_cleanup_temp(temp_dir: str | None):
     import shutil
 
