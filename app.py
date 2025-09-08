@@ -134,6 +134,9 @@ with gr.Blocks(
     with gr.Tab(i18n("Settings")):
         settings_tab()
 
+    with gr.Tab(i18n("Preprocessing")):
+        settings_tab()
+
     gr.Markdown(
         """
     <div style="text-align: center; font-size: 0.9em; text-color: a3a3a3;">
