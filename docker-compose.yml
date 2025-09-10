@@ -14,6 +14,7 @@ services:
       - GRADIO_ROOT_PATH=/applio
     volumes:
       - "${HOME}/.aws:/root/.aws:ro"
+      - "./logs:/app/logs"
     deploy:
       resources:
         reservations:
