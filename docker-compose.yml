@@ -11,6 +11,7 @@ services:
     privileged: true
     environment:
       - RUN_ENV=development
+      - GRADIO_ROOT_PATH=/applio
     volumes:
       - "${HOME}/.aws:/root/.aws:ro"
     deploy:
