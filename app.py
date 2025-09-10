@@ -150,7 +150,7 @@ with gr.Blocks(
 
 def launch_gradio(server_name: str, server_port: int) -> None:
     Applio.launch(
-        favicon_path="assets/ICON.ico",
+        favicon_path="https://d2y3hjxtzrh5zo.cloudfront.net/anai_favicon.ico",
         share="--share" in sys.argv,
         inbrowser="--open" in sys.argv,
         server_name=server_name,
