@@ -67,12 +67,23 @@ def read_text(path: str) -> str:
         return f.read()
 
 
+def is_uuid_dir(dir_path: str) -> bool:
+    import uuid
+
+    base = os.path.basename(dir_path)
+    try:
+        uuid.UUID(base)
+        return True
+    except Exception:
+        return False
+
+
 # read_text(os.path.join(root, f"{os.path.splitext(model_file)[0]}.txt")
 titles = [
     (read_text(os.path.join(root, file)), os.path.splitext(file)[0])
     for root, _, files in os.walk(model_root_relative, topdown=False)
     for file in files
-    if (file.endswith(".txt"))
+    if (file.endswith(".txt") and is_uuid_dir(root))
 ]
 
 default_weight = names[0] if names else None
