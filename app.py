@@ -72,7 +72,7 @@ run_prerequisites_script(
 # Initialize i18n
 from assets.i18n.i18n import I18nAuto
 
-i18n = I18nAuto(language="ko")
+i18n = I18nAuto(language="ko_KR")
 
 # Start Discord presence if enabled
 from tabs.settings.sections.presence import load_config_presence
@@ -121,14 +121,14 @@ with gr.Blocks(
     with gr.Tab(i18n("Voice Blender")):
         voice_blender_tab()
 
-    with gr.Tab(i18n("Plugins")):
-        plugins_tab()
+    # with gr.Tab(i18n("Plugins")):
+    #     plugins_tab()
 
-    with gr.Tab(i18n("Download")):
-        download_tab()
+    # with gr.Tab(i18n("Download")):
+    #     download_tab()
 
-    with gr.Tab(i18n("Report a Bug")):
-        report_tab()
+    # with gr.Tab(i18n("Report a Bug")):
+    #     report_tab()
 
     with gr.Tab(i18n("Extra")):
         extra_tab()
@@ -138,14 +138,6 @@ with gr.Blocks(
 
     with gr.Tab(i18n("Preprocessing")):
         preprocessing_tab()
-
-    gr.Markdown(
-        """
-    <div style="text-align: center; font-size: 0.9em; text-color: a3a3a3;">
-    By using Applio, you agree to comply with ethical and legal standards, respect intellectual property and privacy rights, avoid harmful or prohibited uses, and accept full responsibility for any outcomes, while Applio disclaims liability and reserves the right to amend these terms.
-    </div>
-    """
-    )
 
 
 def launch_gradio(server_name: str, server_port: int) -> None:
