@@ -87,16 +87,11 @@ import assets.installation_checker as installation_checker
 
 installation_checker.check_installation()
 
-# Load theme
-import assets.themes.loadThemes as loadThemes
-
-my_applio = loadThemes.load_theme() or "ParityError/Interstellar"
 
 # Define Gradio interface
 with gr.Blocks(
     theme=gr.themes.Glass(),
     title="Applio",
-    css="footer{display:none !important}",
 ) as Applio:
     gr.Markdown("# AnAI Applio")
     gr.Markdown(
