@@ -61,6 +61,7 @@ def run_infer_script(
     pth_path: str,
     index_path: str,
     split_audio: bool,
+    min_silence_len: int,
     f0_autotune: bool,
     f0_autotune_strength: float,
     proposed_pitch: bool,
@@ -124,6 +125,7 @@ def run_infer_script(
         "pth_path": pth_path,
         "index_path": index_path,
         "split_audio": split_audio,
+        "min_silence_len": min_silence_len,
         "f0_autotune": f0_autotune,
         "f0_autotune_strength": f0_autotune_strength,
         "proposed_pitch": proposed_pitch,
@@ -195,6 +197,7 @@ def run_batch_infer_script(
     pth_path: str,
     index_path: str,
     split_audio: bool,
+    min_silence_len: int,
     f0_autotune: bool,
     f0_autotune_strength: float,
     proposed_pitch: bool,
@@ -258,6 +261,7 @@ def run_batch_infer_script(
         "pth_path": pth_path,
         "index_path": index_path,
         "split_audio": split_audio,
+        "min_silence_len": min_silence_len,
         "f0_autotune": f0_autotune,
         "f0_autotune_strength": f0_autotune_strength,
         "proposed_pitch": proposed_pitch,
@@ -332,6 +336,7 @@ def run_tts_script(
     pth_path: str,
     index_path: str,
     split_audio: bool,
+    min_silence_len: int,
     f0_autotune: bool,
     f0_autotune_strength: float,
     proposed_pitch: bool,
@@ -378,6 +383,7 @@ def run_tts_script(
         model_path=pth_path,
         index_path=index_path,
         split_audio=split_audio,
+        min_silence_len=min_silence_len,
         f0_autotune=f0_autotune,
         f0_autotune_strength=f0_autotune_strength,
         proposed_pitch=proposed_pitch,
@@ -709,6 +715,14 @@ def parse_arguments():
         choices=[True, False],
         help=split_audio_description,
         default=False,
+    )
+    min_silence_len_description = "Minimum silence duration in milliseconds for audio splitting. Higher values create fewer, larger chunks."
+    infer_parser.add_argument(
+        "--min_silence_len",
+        type=int,
+        help=min_silence_len_description,
+        choices=range(100, 10001, 100),
+        default=3000,
     )
     f0_autotune_description = "Apply a light autotune to the inferred audio. Particularly useful for singing voice conversions."
     infer_parser.add_argument(
@@ -1230,6 +1244,13 @@ def parse_arguments():
         default=False,
     )
     batch_infer_parser.add_argument(
+        "--min_silence_len",
+        type=int,
+        help=min_silence_len_description,
+        choices=range(100, 10001, 100),
+        default=3000,
+    )
+    batch_infer_parser.add_argument(
         "--f0_autotune",
         type=lambda x: bool(strtobool(x)),
         choices=[True, False],
@@ -1714,6 +1735,13 @@ def parse_arguments():
         default=False,
     )
     tts_parser.add_argument(
+        "--min_silence_len",
+        type=int,
+        help=min_silence_len_description,
+        choices=range(100, 10001, 100),
+        default=3000,
+    )
+    tts_parser.add_argument(
         "--f0_autotune",
         type=lambda x: bool(strtobool(x)),
         choices=[True, False],
@@ -2187,6 +2215,7 @@ def main():
                 pth_path=args.pth_path,
                 index_path=args.index_path,
                 split_audio=args.split_audio,
+                min_silence_len=args.min_silence_len,
                 f0_autotune=args.f0_autotune,
                 f0_autotune_strength=args.f0_autotune_strength,
                 proposed_pitch=args.proposed_pitch,
@@ -2249,6 +2278,7 @@ def main():
                 pth_path=args.pth_path,
                 index_path=args.index_path,
                 split_audio=args.split_audio,
+                min_silence_len=args.min_silence_len,
                 f0_autotune=args.f0_autotune,
                 f0_autotune_strength=args.f0_autotune_strength,
                 proposed_pitch=args.proposed_pitch,
@@ -2315,6 +2345,7 @@ def main():
                 pth_path=args.pth_path,
                 index_path=args.index_path,
                 split_audio=args.split_audio,
+                min_silence_len=args.min_silence_len,
                 f0_autotune=args.f0_autotune,
                 f0_autotune_strength=args.f0_autotune_strength,
                 proposed_pitch=args.proposed_pitch,
