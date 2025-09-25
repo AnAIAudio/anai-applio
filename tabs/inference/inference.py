@@ -615,6 +615,18 @@ def inference_tab():
                     value=False,
                     interactive=True,
                 )
+                min_silence_len = gr.Slider(
+                    minimum=100,
+                    maximum=10000,
+                    step=100,
+                    label=i18n("Minimum Silence Length (ms)"),
+                    info=i18n(
+                        "Minimum silence duration in milliseconds for audio splitting. Higher values create fewer, larger chunks."
+                    ),
+                    visible=False,
+                    value=3000,
+                    interactive=True,
+                )
                 autotune = gr.Checkbox(
                     label=i18n("Autotune"),
                     info=i18n(
@@ -1308,6 +1320,18 @@ def inference_tab():
                     value=False,
                     interactive=True,
                 )
+                min_silence_len_batch = gr.Slider(
+                    minimum=100,
+                    maximum=10000,
+                    step=100,
+                    label=i18n("Minimum Silence Length (ms)"),
+                    info=i18n(
+                        "Minimum silence duration in milliseconds for audio splitting. Higher values create fewer, larger chunks."
+                    ),
+                    visible=False,
+                    value=3000,
+                    interactive=True,
+                )
                 autotune_batch = gr.Checkbox(
                     label=i18n("Autotune"),
                     info=i18n(
@@ -1886,6 +1910,9 @@ def inference_tab():
     def toggle_visible(checkbox):
         return {"visible": checkbox, "__type__": "update"}
 
+    def toggle_split_audio_visible(split_audio):
+        return {"visible": split_audio, "__type__": "update"}
+
     def toggle_visible_embedder_custom(embedder_model):
         if embedder_model == "custom":
             return {"visible": True, "__type__": "update"}
@@ -1945,6 +1972,16 @@ def inference_tab():
     def delay_visible(checkbox):
         return update_visibility(checkbox, 3)
 
+    split_audio.change(
+        fn=toggle_split_audio_visible,
+        inputs=[split_audio],
+        outputs=[min_silence_len],
+    )
+    split_audio_batch.change(
+        fn=toggle_split_audio_visible,
+        inputs=[split_audio_batch],
+        outputs=[min_silence_len_batch],
+    )
     autotune.change(
         fn=toggle_visible,
         inputs=[autotune],
@@ -2264,6 +2301,7 @@ def inference_tab():
             model_file,
             index_file,
             split_audio,
+            min_silence_len,
             autotune,
             autotune_strength,
             proposed_pitch,
@@ -2330,6 +2368,7 @@ def inference_tab():
             model_file,
             index_file,
             split_audio_batch,
+            min_silence_len_batch,
             autotune_batch,
             autotune_strength_batch,
             proposed_pitch_batch,
