@@ -1253,7 +1253,7 @@ def inference_tab():
                     info=i18n("Select the folder containing the audios to convert."),
                     placeholder=i18n("Enter input path"),
                     value=os.path.join(now_dir, "assets", "audios"),
-                    interactive=True,
+                    interactive=False,
                 )
                 output_folder_batch = gr.Textbox(
                     label=i18n("Output Folder"),
@@ -1262,7 +1262,7 @@ def inference_tab():
                     ),
                     placeholder=i18n("Enter output path"),
                     value=os.path.join(now_dir, "assets", "audios"),
-                    interactive=True,
+                    interactive=False,
                 )
 
                 prepare_btn.click(

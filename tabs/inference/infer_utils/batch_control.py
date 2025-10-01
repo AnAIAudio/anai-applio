@@ -115,10 +115,10 @@ def _safe_join(root: str, rel_path: str) -> str | None:
 
 def _safe_extract_zip_to_temp(zip_path: str) -> tuple[str, str]:
     """
-    zip_path를 temp_dir에 안전 추출.
+    zip_path를 temp_dir에 추출.
     반환: (temp_dir, extracted_root)
     """
-    import tempfile, zipfile, shutil
+    import tempfile, zipfile, shutil, unicodedata
 
     temp_dir = tempfile.mkdtemp(prefix="batch_zip_")
     extracted_root = os.path.join(temp_dir, "extracted")
@@ -129,6 +129,30 @@ def _safe_extract_zip_to_temp(zip_path: str) -> tuple[str, str]:
             # macOS 메타데이터/디렉토리 항목 건너뛰기
             if name.endswith("/") or name.startswith("__MACOSX/") or "/._" in name:
                 continue
+
+            # 파일명 인코딩 복원
+            if info.flag_bits & 0x800:
+                # UTF-8 플래그가 있는 경우: NFC로 정규화 (macOS는 종종 NFD)
+                name = unicodedata.normalize("NFC", name)
+            else:
+                # UTF-8 플래그 없음: CP437로 잘못 해석된 name을 원시 바이트로 환원
+                try:
+                    raw = name.encode("cp437", errors="ignore")
+                except Exception:
+                    raw = None
+                if raw:
+                    decoded = None
+                    for enc in ("cp949", "euc-kr", "mac_roman"):
+                        try:
+                            decoded = raw.decode(enc, errors="strict")
+                            decoded = unicodedata.normalize("NFC", decoded)
+                            break
+                        except Exception:
+                            continue
+                    if decoded:
+                        name = decoded
+                    # 실패 시 원본 name 유지
+
             out_path = _safe_join(extracted_root, name)
             if not out_path:
                 continue
