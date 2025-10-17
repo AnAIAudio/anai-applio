@@ -254,10 +254,9 @@ class VoiceConverter:
             start_time = time.time()
             print(f"Converting audio '{audio_input_path}'...")
 
-            _, sr = librosa.load(audio_input_path, sr=None)
             audio = load_audio_infer(
                 audio_input_path,
-                sr,
+                16000,
                 **kwargs,
             )
             audio_max = np.abs(audio).max() / 0.95
