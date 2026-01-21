@@ -163,7 +163,7 @@ def main():
 
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = str(randint(20000, 55555))
-    # Check sample rate
+    # Check samplerate
     wavs = glob.glob(
         os.path.join(os.path.join(experiment_dir, "sliced_audios"), "*.wav")
     )

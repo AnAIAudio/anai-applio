@@ -1,10 +1,13 @@
 import os
-
+from typing import Literal
 import boto3
 from botocore.exceptions import NoCredentialsError
 
 
-def get_boto3_session(client_type: str = "s3", region_name: str = "ap-northeast-1"):
+def get_boto3_session(
+    client_type: Literal["s3", "secretsmanager", "accessanalyzer"] = "s3",
+    region_name: str | None = "ap-northeast-1",
+):
     """
     AWS에서 사용할 수 있는 Boto3 세션 가져오기
     Access Key 및 Secret Key는 AWS Cli 설치해서 설정하기.
@@ -25,6 +28,7 @@ def get_aws_secret(secret_name: str = "dev/rds/anai-dev"):
         get_secret_value_response = s3_client.get_secret_value(SecretId=secret_name)
         return json.loads(get_secret_value_response["SecretString"])
     except Exception as e:
+        print(e)
         raise
 
 
@@ -74,7 +78,7 @@ def check_file_exist(file_path: str, bucket: str = "anaitimbre"):
     AWS S3에 파일이 저장되어 있는지 확인
     """
     if not file_path:
-        return
+        return False
 
     import botocore
 
