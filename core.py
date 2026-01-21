@@ -6,6 +6,7 @@ import subprocess
 from functools import lru_cache
 from distutils.util import strtobool
 
+
 now_dir = os.getcwd()
 sys.path.append(now_dir)
 
@@ -493,7 +494,6 @@ def run_extract_script(
     return f"Model {model_name} extracted successfully."
 
 
-# Train
 def run_train_script(
     model_name: str,
     save_every_epoch: int,
@@ -515,11 +515,62 @@ def run_train_script(
     vocoder: str = "HiFi-GAN",
     checkpointing: bool = False,
 ):
+    # 실제 실행 부분을 별도 함수나 인자로 감싸서 큐에 전달
+    args = (
+        model_name,
+        save_every_epoch,
+        save_only_latest,
+        save_every_weights,
+        total_epoch,
+        sample_rate,
+        batch_size,
+        gpu,
+        overtraining_detector,
+        overtraining_threshold,
+        pretrained,
+        cleanup,
+        index_algorithm,
+        cache_data_in_gpu,
+        custom_pretrained,
+        g_pretrained_path,
+        d_pretrained_path,
+        vocoder,
+        checkpointing,
+    )
 
-    if pretrained == True:
+    from utils.task_util import task_queue
+
+    task_queue.put((_execute_train_process, args, {}))
+
+    return f"Model {model_name} has been added to the training queue."
+
+
+# Train
+def _execute_train_process(
+    model_name: str,
+    save_every_epoch: int,
+    save_only_latest: bool,
+    save_every_weights: bool,
+    total_epoch: int,
+    sample_rate: int,
+    batch_size: int,
+    gpu: int,
+    overtraining_detector: bool,
+    overtraining_threshold: int,
+    pretrained: bool,
+    cleanup: bool,
+    index_algorithm: str = "Auto",
+    cache_data_in_gpu: bool = False,
+    custom_pretrained: bool = False,
+    g_pretrained_path: str = None,
+    d_pretrained_path: str = None,
+    vocoder: str = "HiFi-GAN",
+    checkpointing: bool = False,
+):
+    if pretrained:
         from rvc.lib.tools.pretrained_selector import pretrained_selector
 
-        if custom_pretrained == False:
+        if not custom_pretrained:
             pg, pd = pretrained_selector(str(vocoder), int(sample_rate))
         else:
             if g_pretrained_path is None or d_pretrained_path is None:
