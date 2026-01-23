@@ -101,14 +101,11 @@ def enqueue_task(
         _pending.append(meta)
 
     task_queue.put((task_id, task_func, task_args, task_kwargs))
-    # task_queue.put((_execute_train_process, args, {}))
     return task_id
 
 
 def get_queue_snapshot() -> Dict[str, Any]:
-    """
-    Gradio에서 읽기 좋은 형태로 현재 상태 스냅샷을 반환합니다.
-    """
+    """Gradio에서 읽기 좋은 형태로 현재 상태 스냅샷을 반환합니다."""
     with _task_lock:
         pending_list = list(_pending)
         running_list = list(_running.values())

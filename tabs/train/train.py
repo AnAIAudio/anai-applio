@@ -306,8 +306,57 @@ def auto_enable_checkpointing():
         return False
 
 
+import pandas as pd
+from utils.task_util import (
+    get_queue_snapshot,
+)  # enqueue_task는 작업 추가 버튼 만들 때 사용 가능
+
+
+def _to_df(items: list[dict]) -> pd.DataFrame:
+    if not items:
+        return pd.DataFrame(
+            columns=[
+                "id",
+                "name",
+                "status",
+                "enqueued_at",
+                "started_at",
+                "finished_at",
+                "error",
+            ]
+        )
+    df = pd.DataFrame(items)
+    # 컬럼 순서 정리(없으면 자동으로 NaN)
+    cols = ["id", "name", "status", "enqueued_at", "started_at", "finished_at", "error"]
+    for c in cols:
+        if c not in df.columns:
+            df[c] = None
+    return df[cols]
+
+
+def poll():
+    snap = get_queue_snapshot()
+    pending_df = _to_df(snap["pending"])
+    running_df = _to_df(snap["running"])
+    return snap["counts"], pending_df, running_df
+
+
 # Train Tab
 def train_tab():
+    # 현재 훈련 진행 상황
+    with gr.Row():
+        with gr.Column():
+            gr.Textbox(label="Placeholder", visible=False)
+            timer = gr.Timer(
+                1.0
+            )  # 1초마다 갱신 [[1]](https://www.gradio.app/4.44.1/docs/gradio/timer)
+
+            counts = gr.JSON(label="Counts")
+            pending = gr.DataFrame(label="Pending", interactive=False, wrap=True)
+            running = gr.DataFrame(label="Running", interactive=False, wrap=True)
+
+            timer.tick(fn=poll, inputs=None, outputs=[counts, pending, running])
+
     # Model settings section
     with gr.Accordion(i18n("Model Settings")):
         with gr.Row():
