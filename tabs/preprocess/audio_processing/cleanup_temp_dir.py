@@ -2,7 +2,7 @@ import os
 import shutil
 import stat
 import tempfile
-from typing import List, Tuple, Dict, Optional
+from typing import List, Dict
 import gradio as gr
 from assets.i18n.i18n import I18nAuto
 
@@ -72,9 +72,53 @@ def cleanup_all_batch_zip_temp_dirs(prefix: str = "batch_zip_") -> Dict[str, obj
     }
 
 
-# Gradio 콜백으로 쓰고 싶을 때 편의용 래퍼
 def cleanup_all_batch_zip_temp_dirs_as_text(prefix: str = "batch_zip_") -> str:
     res = cleanup_all_batch_zip_temp_dirs(prefix=prefix)
+    msg = [
+        f"총 대상: {res['total']}",
+        f"삭제 성공: {res['removed']}",
+        f"삭제 실패: {res['failed']}",
+    ]
+    if res["failed_paths"]:
+        msg.append("실패 경로:")
+        msg.extend(f" - {p}" for p in res["failed_paths"])
+    return "\n".join(msg)
+
+
+def cleanup_logs_dir(keep_names=("mute", "mute_spin", "reference", "zips")):
+    """
+    logs 디렉토리 바로 아래에서 keep_names에 있는 디렉토리만 제외하고 전부 삭제.
+    예) logs/mute, logs/mute_spin, logs/reference, logs/zips 는 남기고 나머지는 삭제.
+    """
+    now_dir = os.getcwd()
+    logs_root = os.path.join(now_dir, "logs")
+
+    if not os.path.isdir(logs_root):
+        return
+
+    keep_set = set(keep_names)
+
+    for name in os.listdir(logs_root):
+        full = os.path.join(logs_root, name)
+
+        # logs 바로 아래의 "디렉토리" 중 keep_names는 보존
+        if os.path.isdir(full) and name in keep_set:
+            continue
+
+        try:
+            if os.path.isdir(full) and not os.path.islink(full):
+                shutil.rmtree(full, onerror=_on_rm_error)
+            else:
+                os.remove(full)
+        except IsADirectoryError:
+            shutil.rmtree(full, onerror=_on_rm_error)
+        except Exception:
+            # 필요하면 실패 항목을 모아서 리턴/로그로 남기도록 확장 가능
+            pass
+
+
+def cleanup_logs_dir_result() -> str:
+    res = cleanup_logs_dir()
     msg = [
         f"총 대상: {res['total']}",
         f"삭제 성공: {res['removed']}",
@@ -99,4 +143,18 @@ def cleanup_temp_dir_tab():
                 fn=cleanup_all_batch_zip_temp_dirs_as_text,
                 inputs=[],
                 outputs=[cleanup_all_status],
+            )
+
+    with gr.Row():
+        with gr.Column():
+            gr.Markdown("### Train 디렉토리/파일 정리 ")
+            cleanup_logs_btn = gr.Button(
+                i18n("Clean up"),
+                variant="secondary",
+            )
+            cleanup_logs_status = gr.Textbox(label="정리 상태", lines=6)
+            cleanup_logs_btn.click(
+                fn=cleanup_logs_dir_result,
+                inputs=[],
+                outputs=[cleanup_logs_status],
             )
