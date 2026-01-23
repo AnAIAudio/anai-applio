@@ -94,9 +94,10 @@ def cleanup_logs_dir(keep_names=("mute", "mute_spin", "reference", "zips")):
     logs_root = os.path.join(now_dir, "logs")
 
     if not os.path.isdir(logs_root):
-        return
+        return []
 
     keep_set = set(keep_names)
+    dir_list = []
 
     for name in os.listdir(logs_root):
         full = os.path.join(logs_root, name)
@@ -110,24 +111,23 @@ def cleanup_logs_dir(keep_names=("mute", "mute_spin", "reference", "zips")):
                 shutil.rmtree(full, onerror=_on_rm_error)
             else:
                 os.remove(full)
+
+            dir_list.append(full)
         except IsADirectoryError:
             shutil.rmtree(full, onerror=_on_rm_error)
         except Exception:
             # 필요하면 실패 항목을 모아서 리턴/로그로 남기도록 확장 가능
             pass
 
+    return dir_list
+
 
 def cleanup_logs_dir_result() -> str:
-    res = cleanup_logs_dir()
-    msg = [
-        f"총 대상: {res['total']}",
-        f"삭제 성공: {res['removed']}",
-        f"삭제 실패: {res['failed']}",
-    ]
-    if res["failed_paths"]:
-        msg.append("실패 경로:")
-        msg.extend(f" - {p}" for p in res["failed_paths"])
-    return "\n".join(msg)
+    remove_dir_list = cleanup_logs_dir()
+    message = []
+    for dir_text in remove_dir_list:
+        message.append(f"삭제 경로: {dir_text}")
+    return "\n".join(message)
 
 
 def cleanup_temp_dir_tab():
