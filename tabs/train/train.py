@@ -221,6 +221,15 @@ def refresh_embedders_folders():
 
 
 # Export
+def get_project_list():
+    excluded_dirs = {"mute", "mute_spin", "reference", "zips"}
+    return [
+        os.path.relpath(os.path.join(models_path, name), now_dir)
+        for name in os.listdir(models_path)
+        if os.path.isdir(os.path.join(models_path, name)) and name not in excluded_dirs
+    ]
+
+
 def get_pth_list():
     return [
         os.path.relpath(os.path.join(dirpath, filename), now_dir)
@@ -247,6 +256,38 @@ def refresh_pth_and_index_list():
 
 
 # Export Pth and Index Files
+def export_project_zip(pth_path):
+    allowed_paths = get_project_list()
+    # "mute", "mute_spin", "reference", "zips"
+    normalized_allowed_paths = [
+        os.path.abspath(os.path.join(now_dir, p)) for p in allowed_paths
+    ]
+    normalized_pth_path = os.path.abspath(os.path.join(now_dir, pth_path))
+
+    zips_dir = os.path.join(models_path, "zips")
+    os.makedirs(zips_dir, exist_ok=True)
+
+    # 기존 zip 있으면 덮어쓰기 위해 삭제
+    zip_path = os.path.join(zips_dir, f"{project_name}.zip")
+    if os.path.exists(zip_path):
+        os.remove(zip_path)
+
+    # shutil.make_archive는 확장자 없이 base_name을 받음
+    zip_base_name = os.path.splitext(zip_path)[0]
+    created_zip = shutil.make_archive(
+        base_name=zip_base_name,
+        format="zip",
+        root_dir=normalized_pth_path,
+    )
+
+    print("test")
+    if normalized_pth_path in normalized_allowed_paths:
+        return created_zip
+    else:
+        print(f"Attempted to export invalid pth path: {pth_path}")
+        return None
+
+
 def export_pth(pth_path):
     allowed_paths = get_pth_list()
     normalized_allowed_paths = [
@@ -876,6 +917,25 @@ def train_tab():
                     "The button 'Upload' is only for google colab: Uploads the exported files to the ApplioExported folder in your Google Drive."
                 )
             )
+        # 프로젝트 별로 파일 압축해서 한꺼번에 다운로드
+        with gr.Row():
+            with gr.Column():
+                zip_dropdown_export = gr.Dropdown(
+                    label=i18n("Pth file"),
+                    info=i18n("Select the project to be exported"),
+                    choices=get_project_list(),
+                    value=None,
+                    interactive=True,
+                    allow_custom_value=True,
+                )
+            with gr.Column():
+                zip_file_export = gr.File(
+                    label=i18n("Exported ZIP file"),
+                    type="filepath",
+                    value=None,
+                    interactive=False,
+                )
+
         with gr.Row():
             with gr.Column():
                 pth_file_export = gr.File(
@@ -1069,6 +1129,11 @@ def train_tab():
                 fn=export_index,
                 inputs=[index_dropdown_export],
                 outputs=[index_file_export],
+            )
+            zip_dropdown_export.change(
+                fn=export_project_zip,
+                inputs=[zip_dropdown_export],
+                outputs=[zip_file_export],
             )
             refresh_export.click(
                 fn=refresh_pth_and_index_list,
