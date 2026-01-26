@@ -13,16 +13,63 @@ _finished_maxlen = 200
 
 
 def worker():
-    """백그라운드에서 큐에 쌓인 작업을 하나씩 꺼내 실행하는 워커"""
+    """
+    백그라운드에서 큐에 쌓인 작업을 하나씩 꺼내 실행하는 워커
+    """
     while True:
         # 큐에서 작업을 꺼냄 (작업이 없으면 생길 때까지 대기)
-        task_func, task_args, task_kwargs = task_queue.get()
+        task_id, task_func, task_args, task_kwargs = task_queue.get()
+        started_at = datetime.now().isoformat(timespec="seconds")
+
+        # pending에서 해당 task_id를 찾아 running으로 이동
+        with _task_lock:
+            moved = None
+            for idx, item in enumerate(_pending):
+                if item["id"] == task_id:
+                    moved = _pending[idx]
+                    del _pending[idx]
+                    break
+
+            if moved is None:
+                moved = {
+                    "id": task_id,
+                    "name": str(
+                        task_args[0]
+                        if task_args
+                        else getattr(task_func, "__name__", "Unknown Task")
+                    ),
+                    "enqueued_at": None,
+                }
+
+            moved["status"] = "running"
+            moved["started_at"] = started_at
+            _running[task_id] = moved
+
         try:
             print(f"Starting task: {task_args[0] if task_args else 'Unknown Task'}")
             task_func(*task_args, **task_kwargs)
             print("Task completed.")
+
+            with _task_lock:
+                done = _running.pop(task_id, None)
+                if done is not None:
+                    done["status"] = "finished"
+                    done["finished_at"] = datetime.now().isoformat(timespec="seconds")
+                    _finished.append(done)
+                    while len(_finished) > _finished_maxlen:
+                        _finished.popleft()
+
         except Exception as e:
             print(f"Error in task: {e}")
+            with _task_lock:
+                failed = _running.pop(task_id, None)
+                if failed is not None:
+                    failed["status"] = "failed"
+                    failed["error"] = repr(e)
+                    failed["finished_at"] = datetime.now().isoformat(timespec="seconds")
+                    _finished.append(failed)
+                    while len(_finished) > _finished_maxlen:
+                        _finished.popleft()
         finally:
             # 작업 완료 표시
             task_queue.task_done()
@@ -58,7 +105,9 @@ def enqueue_task(
 
 
 def get_queue_snapshot() -> Dict[str, Any]:
-    """Gradio에서 읽기 좋은 형태로 현재 상태 스냅샷을 반환합니다."""
+    """
+    Gradio에서 읽기 좋은 형태로 현재 상태 스냅샷을 반환합니다.
+    """
     with _task_lock:
         pending_list = list(_pending)
         running_list = list(_running.values())

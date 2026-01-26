@@ -538,9 +538,10 @@ def run_train_script(
         checkpointing,
     )
 
-    from utils.task_util import task_queue
+    from utils.task_util import task_queue, enqueue_task
 
-    task_queue.put((_execute_train_process, args, {}))
+    # task_queue.put((_execute_train_process, args, {}))
+    enqueue_task(_execute_train_process, *args)
 
     return f"Model {model_name} has been added to the training queue."
 
