@@ -1,0 +1,50 @@
+services:
+  applio:
+    image: 339712720989.dkr.ecr.ap-northeast-1.amazonaws.com/dev/anai-applio:latest
+    ports:
+      - "6969:6969"
+    container_name: anai-applio
+    restart: always
+    environment:
+      - RUN_ENV=development
+      - GRADIO_ROOT_PATH=/applio
+    networks:
+      - app-network
+    volumes:
+      - nfs_align_logs:/app/logs
+      - ${HOME}/.aws:/root/.aws:ro
+#    healthcheck:
+#      test: [ "CMD", "curl", "-fsS", "http://localhost:8000/applio/healthz" ]
+#      interval: 60s
+#      timeout: 10s
+#      retries: 3
+    deploy:
+      replicas: 2
+      placement:
+        constraints:
+          - node.labels.gpu == true
+      update_config:
+        parallelism: 1
+        delay: 5s
+        order: start-first
+        failure_action: rollback
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+      restart_policy:
+        condition: on-failure
+        delay: 3s
+        max_attempts: 3
+        window: 30s
+
+networks:
+  app-network:
+    driver: overlay
+
+volumes:
+  nfs_align_logs:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: "addr=211.233.64.121,rw,nolock,soft"
+      device: ":/data/nfs/share/anai-applio/logs"
