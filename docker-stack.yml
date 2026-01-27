@@ -3,7 +3,6 @@ services:
     image: 339712720989.dkr.ecr.ap-northeast-1.amazonaws.com/dev/anai-applio:latest
     ports:
       - "6969:6969"
-    container_name: anai-applio
     restart: always
     environment:
       - RUN_ENV=development
