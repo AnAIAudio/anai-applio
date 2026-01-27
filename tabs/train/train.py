@@ -257,6 +257,8 @@ def refresh_pth_and_index_list():
 
 # Export Pth and Index Files
 def export_project_zip(project_path):
+    import zipfile
+
     allowed_paths = get_project_list()
     # "mute", "mute_spin", "reference", "zips"
     normalized_allowed_paths = [
@@ -278,16 +280,23 @@ def export_project_zip(project_path):
     if os.path.exists(zip_path):
         os.remove(zip_path)
 
-    # shutil.make_archive는 확장자 없이 base_name을 받음
-    zip_base_name = os.path.splitext(zip_path)[0]
-    created_zip = shutil.make_archive(
-        base_name=zip_base_name,
-        format="zip",
-        root_dir=normalized_selected_path,
-    )
+    allowed_ext = {".pth", ".index"}
+    with zipfile.ZipFile(zip_path, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for dirpath, _, filenames in os.walk(normalized_selected_path):
+            for filename in filenames:
+                ext = os.path.splitext(filename)[1].lower()
+
+                if ext not in allowed_ext:
+                    continue
+                if ext == ".index" and "trained" in filename:
+                    continue
+
+                abs_path = os.path.join(dirpath, filename)
+                rel_path = os.path.relpath(abs_path, normalized_selected_path)
+                zf.write(abs_path, arcname=rel_path)
 
     if normalized_selected_path in normalized_allowed_paths:
-        return created_zip
+        return zip_path
     else:
         print(f"Attempted to export invalid pth path: {project_path}")
         return None
