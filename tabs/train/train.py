@@ -256,14 +256,20 @@ def refresh_pth_and_index_list():
 
 
 # Export Pth and Index Files
-def export_project_zip(pth_path):
+def export_project_zip(project_path):
     allowed_paths = get_project_list()
     # "mute", "mute_spin", "reference", "zips"
     normalized_allowed_paths = [
         os.path.abspath(os.path.join(now_dir, p)) for p in allowed_paths
     ]
-    normalized_pth_path = os.path.abspath(os.path.join(now_dir, pth_path))
+    normalized_selected_path = os.path.abspath(os.path.join(now_dir, project_path))
 
+    # 실제로 폴더인지 확인
+    if not os.path.isdir(normalized_selected_path):
+        print(f"Attempted to export non-directory path: {project_path}")
+        return None
+
+    project_name = os.path.basename(normalized_selected_path)
     zips_dir = os.path.join(models_path, "zips")
     os.makedirs(zips_dir, exist_ok=True)
 
@@ -277,14 +283,13 @@ def export_project_zip(pth_path):
     created_zip = shutil.make_archive(
         base_name=zip_base_name,
         format="zip",
-        root_dir=normalized_pth_path,
+        root_dir=normalized_selected_path,
     )
 
-    print("test")
-    if normalized_pth_path in normalized_allowed_paths:
+    if normalized_selected_path in normalized_allowed_paths:
         return created_zip
     else:
-        print(f"Attempted to export invalid pth path: {pth_path}")
+        print(f"Attempted to export invalid pth path: {project_path}")
         return None
 
 
