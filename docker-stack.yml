@@ -12,7 +12,6 @@ services:
       - app-network
     volumes:
       - nfs_align_logs:/app/logs
-      - ${HOME}/.aws:/root/.aws:ro
     deploy:
       replicas: 2
       placement:
@@ -31,6 +30,13 @@ services:
         delay: 3s
         max_attempts: 3
         window: 30s
+    secrets:
+      - source: aws_credentials
+        target: /root/.aws/credentials
+        mode: 0400
+      - source: aws_config
+        target: /root/.aws/config
+        mode: 0400
 
 networks:
   app-network:
@@ -43,3 +49,9 @@ volumes:
       type: nfs
       o: "addr=211.233.64.121,rw,nolock,soft"
       device: ":/data/nfs/share/anai-applio/logs"
+
+secrets:
+  aws_credentials:
+    external: true
+  aws_config:
+    external: true
