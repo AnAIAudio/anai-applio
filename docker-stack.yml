@@ -26,6 +26,7 @@ services:
     image: 339712720989.dkr.ecr.ap-northeast-1.amazonaws.com/dev/anai-applio:latest
     environment:
       - RUN_ENV=development
+      - NVIDIA_VISIBLE_DEVICES=1
     networks:
       - app-network
     volumes:
