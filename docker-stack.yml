@@ -1,8 +1,33 @@
 services:
+  traefik:
+    image: traefik:v3.1
+    command:
+      - --api.dashboard=true
+      - --providers.swarm=true
+      - --providers.swarm.exposedbydefault=false
+      - --providers.swarm.network=app-network
+      - --entrypoints.web.address=:80
+
+      # SSE/스트리밍에서 프록시 타임아웃 이슈 줄이기(권장)
+      - --entrypoints.web.transport.respondingtimeouts.readtimeout=0
+      - --entrypoints.web.transport.respondingtimeouts.idletimeout=0
+    ports:
+      - "6969:80"          # 호스트 nginx가 여기로 프록시
+      # HTTPS 쓰면 18443:443도 열기
+      # - "18443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - app-network
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+
   applio:
     image: 339712720989.dkr.ecr.ap-northeast-1.amazonaws.com/dev/anai-applio:latest
-    ports:
-      - "6969:6969"
+#    ports:
+#      - "6969:6969"
     restart: always
     environment:
       - RUN_ENV=development
@@ -35,6 +60,22 @@ services:
       - source: aws_config
         target: /root/.aws/config
         mode: 0400
+    labels:
+      - traefik.enable=true
+
+      # 라우팅: Host 헤더로 분기
+      - traefik.http.routers.applio.rule=Host(`applio.catslandlady.net`)
+      - traefik.http.routers.applio.entrypoints=web
+
+      # 백엔드 포트: 컨테이너 내부 6969
+      - traefik.http.services.applio.loadbalancer.server.port=6969
+
+      # ★ Sticky Session: 쿠키 기반 (핵심)
+      - traefik.http.services.applio.loadbalancer.sticky.cookie=true
+      - traefik.http.services.applio.loadbalancer.sticky.cookie.name=applio_sticky
+      - traefik.http.services.applio.loadbalancer.sticky.cookie.httpOnly=true
+      - traefik.http.services.applio.loadbalancer.sticky.cookie.sameSite=lax
+      - traefik.http.services.applio.loadbalancer.sticky.cookie.secure=false
 
 networks:
   app-network:
