@@ -48,6 +48,12 @@ services:
         delay: 3s
         max_attempts: 3
         window: 30s
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [ gpu ]
       labels:
         - traefik.enable=true
 
