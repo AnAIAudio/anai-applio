@@ -8,13 +8,11 @@ services:
       - --providers.swarm.network=app-network
       - --entrypoints.web.address=:80
 
-      # SSE/스트리밍에서 프록시 타임아웃 이슈 줄이기(권장)
+      # SSE/스트리밍에서 프록시 타임아웃
       - --entrypoints.web.transport.respondingtimeouts.readtimeout=0
       - --entrypoints.web.transport.respondingtimeouts.idletimeout=0
     ports:
-      - "6969:80"          # 호스트 nginx가 여기로 프록시
-      # HTTPS 쓰면 18443:443도 열기
-      # - "18443:443"
+      - "6969:80"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
@@ -53,14 +51,14 @@ services:
       labels:
         - traefik.enable=true
 
-        # 라우팅: Host 헤더로 분기
+        # Host 헤더로가 applio.catslandlady.net 인것만 허용
         - traefik.http.routers.applio.rule=Host(`applio.catslandlady.net`)
         - traefik.http.routers.applio.entrypoints=web
 
-        # 백엔드 포트: 컨테이너 내부 6969
+        # 컨테이너 내부 6969
         - traefik.http.services.applio.loadbalancer.server.port=6969
 
-        # ★ Sticky Session: 쿠키 기반 (핵심)
+        # Sticky Session/쿠키 기반
         - traefik.http.services.applio.loadbalancer.sticky.cookie=true
         - traefik.http.services.applio.loadbalancer.sticky.cookie.name=applio_sticky
         - traefik.http.services.applio.loadbalancer.sticky.cookie.httpOnly=true
@@ -73,7 +71,6 @@ services:
       - source: aws_config
         target: /root/.aws/config
         mode: 0400
-
 
 networks:
   app-network:
