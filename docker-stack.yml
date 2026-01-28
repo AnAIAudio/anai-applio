@@ -50,10 +50,10 @@ services:
         window: 30s
       resources:
         reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [ gpu ]
+          generic_resources:
+            - discrete_resource_spec:
+                kind: NVIDIA-GPU
+                value: 2
       labels:
         - traefik.enable=true
 
