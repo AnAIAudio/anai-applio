@@ -26,9 +26,6 @@ services:
 
   applio:
     image: 339712720989.dkr.ecr.ap-northeast-1.amazonaws.com/dev/anai-applio:latest
-#    ports:
-#      - "6969:6969"
-    restart: always
     environment:
       - RUN_ENV=development
     networks:
@@ -53,6 +50,22 @@ services:
         delay: 3s
         max_attempts: 3
         window: 30s
+      labels:
+        - traefik.enable=true
+
+        # 라우팅: Host 헤더로 분기
+        - traefik.http.routers.applio.rule=Host(`applio.catslandlady.net`)
+        - traefik.http.routers.applio.entrypoints=web
+
+        # 백엔드 포트: 컨테이너 내부 6969
+        - traefik.http.services.applio.loadbalancer.server.port=6969
+
+        # ★ Sticky Session: 쿠키 기반 (핵심)
+        - traefik.http.services.applio.loadbalancer.sticky.cookie=true
+        - traefik.http.services.applio.loadbalancer.sticky.cookie.name=applio_sticky
+        - traefik.http.services.applio.loadbalancer.sticky.cookie.httpOnly=true
+        - traefik.http.services.applio.loadbalancer.sticky.cookie.sameSite=lax
+        - traefik.http.services.applio.loadbalancer.sticky.cookie.secure=false
     secrets:
       - source: aws_credentials
         target: /root/.aws/credentials
@@ -60,22 +73,7 @@ services:
       - source: aws_config
         target: /root/.aws/config
         mode: 0400
-    labels:
-      - traefik.enable=true
 
-      # 라우팅: Host 헤더로 분기
-      - traefik.http.routers.applio.rule=Host(`applio.catslandlady.net`)
-      - traefik.http.routers.applio.entrypoints=web
-
-      # 백엔드 포트: 컨테이너 내부 6969
-      - traefik.http.services.applio.loadbalancer.server.port=6969
-
-      # ★ Sticky Session: 쿠키 기반 (핵심)
-      - traefik.http.services.applio.loadbalancer.sticky.cookie=true
-      - traefik.http.services.applio.loadbalancer.sticky.cookie.name=applio_sticky
-      - traefik.http.services.applio.loadbalancer.sticky.cookie.httpOnly=true
-      - traefik.http.services.applio.loadbalancer.sticky.cookie.sameSite=lax
-      - traefik.http.services.applio.loadbalancer.sticky.cookie.secure=false
 
 networks:
   app-network:
