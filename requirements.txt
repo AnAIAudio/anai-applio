@@ -45,5 +45,3 @@ tensorboardX
 edge-tts==7.2.0
 pypresence
 beautifulsoup4
-
-

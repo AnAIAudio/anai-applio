@@ -44,6 +44,8 @@ dependencies = [
     "boto3-stubs[secretsmanager]>=1.40.24",
     "dotenv>=0.9.9",
     "httpx>=0.28.1",
+    "fastapi>=0.116.1",
+    "uvicorn>=0.35.0",
 ]
 
 [tool.uv.sources]

@@ -158,6 +158,7 @@ dependencies = [
     { name = "edge-tts" },
     { name = "einops" },
     { name = "faiss-cpu" },
+    { name = "fastapi" },
     { name = "ffmpeg-python" },
     { name = "gradio" },
     { name = "httpx" },
@@ -189,6 +190,7 @@ dependencies = [
     { name = "torchvision", version = "0.22.1+cu128", source = { registry = "https://download.pytorch.org/whl/cu128" }, marker = "(platform_machine != 'aarch64' and sys_platform == 'linux') or sys_platform == 'win32'" },
     { name = "tqdm" },
     { name = "transformers" },
+    { name = "uvicorn" },
     { name = "wget" },
     { name = "wheel" },
 ]
@@ -206,6 +208,7 @@ requires-dist = [
     { name = "edge-tts", specifier = "==7.2.0" },
     { name = "einops" },
     { name = "faiss-cpu", specifier = "==1.7.3" },
+    { name = "fastapi", specifier = ">=0.116.1" },
     { name = "ffmpeg-python", specifier = ">=0.2.0" },
     { name = "gradio", specifier = "==5.23.1" },
     { name = "httpx", specifier = ">=0.28.1" },
@@ -235,6 +238,7 @@ requires-dist = [
     { name = "torchvision", marker = "sys_platform == 'linux' or sys_platform == 'win32'", specifier = "==0.22.1", index = "https://download.pytorch.org/whl/cu128" },
     { name = "tqdm" },
     { name = "transformers", specifier = "==4.44.2" },
+    { name = "uvicorn", specifier = ">=0.35.0" },
     { name = "wget" },
     { name = "wheel", specifier = ">=0.45.1" },
 ]
