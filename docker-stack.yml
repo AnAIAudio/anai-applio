@@ -52,7 +52,7 @@ services:
         reservations:
           generic_resources:
             - discrete_resource_spec:
-                kind: NVIDIA-GPU
+                kind: 'NVIDIA-GPU'
                 value: 1
       labels:
         - traefik.enable=true
