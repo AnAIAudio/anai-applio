@@ -1,0 +1,1 @@
+docker stack deploy -c ./docker-stack.yml anai-applio-stack --with-registry-auth
