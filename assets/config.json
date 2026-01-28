@@ -7,7 +7,7 @@
   "discord_presence": true,
   "lang": {
     "override": true,
-    "selected_lang": "ko_KR"
+    "selected_lang": "ko_KO"
   },
   "version": "3.4.0",
   "model_author": "None",
