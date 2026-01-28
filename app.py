@@ -142,8 +142,8 @@ def launch_gradio(server_name: str, server_port: int) -> None:
         inbrowser="--open" in sys.argv,
         server_name=server_name,
         server_port=server_port,
-        root_path="/",
     )
+    # root_path="/",
 
 
 def get_value_from_args(key: str, default: Any = None) -> Any:
