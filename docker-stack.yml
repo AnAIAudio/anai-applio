@@ -6,11 +6,10 @@ services:
     restart: always
     environment:
       - RUN_ENV=development
-      - GRADIO_ROOT_PATH=/
     networks:
       - app-network
     volumes:
-      - nfs_align_logs:/app/logs
+      - nfs_applio_logs:/app/logs
     deploy:
       replicas: 2
       placement:
@@ -42,7 +41,7 @@ networks:
     driver: overlay
 
 volumes:
-  nfs_align_logs:
+  nfs_applio_logs:
     driver: local
     driver_opts:
       type: nfs
