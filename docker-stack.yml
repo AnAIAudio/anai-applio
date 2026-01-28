@@ -6,7 +6,7 @@ services:
     restart: always
     environment:
       - RUN_ENV=development
-      - GRADIO_ROOT_PATH=/applio
+      - GRADIO_ROOT_PATH=/
     networks:
       - app-network
     volumes:
