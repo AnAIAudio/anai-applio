@@ -6,7 +6,7 @@
   "plugins": [],
   "discord_presence": true,
   "lang": {
-    "override": false,
+    "override": true,
     "selected_lang": "ko_KR"
   },
   "version": "3.4.0",
