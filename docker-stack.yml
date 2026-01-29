@@ -31,6 +31,10 @@ services:
       - app-network
     volumes:
       - nfs_applio_logs:/app/logs
+      - type: tmpfs
+        target: /dev/shm
+        tmpfs:
+          size: 34359738368
     deploy:
       replicas: 2
       placement:
