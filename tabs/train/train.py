@@ -252,6 +252,7 @@ def refresh_pth_and_index_list():
     return (
         {"choices": sorted(get_pth_list()), "__type__": "update"},
         {"choices": sorted(get_index_list()), "__type__": "update"},
+        {"choices": sorted(get_project_list()), "__type__": "update"},
     )
 
 
@@ -1219,5 +1220,9 @@ def train_tab():
             refresh_export.click(
                 fn=refresh_pth_and_index_list,
                 inputs=[],
-                outputs=[pth_dropdown_export, index_dropdown_export],
+                outputs=[
+                    pth_dropdown_export,
+                    index_dropdown_export,
+                    zip_dropdown_export,
+                ],
             )
