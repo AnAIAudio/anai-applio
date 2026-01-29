@@ -22,6 +22,7 @@ rvc/models
 env
 venv
 .venv
+.env
 
 # Below is AnAI Custom
 .idea/**/*

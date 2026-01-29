@@ -12,10 +12,16 @@ services:
     environment:
       - RUN_ENV=development
       - GRADIO_ROOT_PATH=/applio
+      - RABBIT_URL=amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+      - JOB_INDEX_REDIS_URL=redis://redis:6379/2
     volumes:
       - "${HOME}/.aws:/root/.aws:ro"
       - "./logs:/app/logs"
     shm_size: "48gb"
+    depends_on:
+      - rabbitmq
+      - redis
     deploy:
       resources:
         reservations:
@@ -23,3 +29,31 @@ services:
             - driver: nvidia
               count: all
               capabilities: [ gpu ]
+
+  rabbitmq:
+    image: rabbitmq:4.2-management
+    container_name: anai-rabbitmq
+    restart: always
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
+      - RABBITMQ_DEFAULT_VHOST=/
+    ports:
+      - "15672:15672" # 관리 UI (http://localhost:15672)
+      - "5672:5672"   # AMQP
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+  redis:
+    image: redis:7.4.7-alpine
+    container_name: anai-redis
+    restart: always
+    command: [ "redis-server", "--appendonly", "yes" ]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  rabbitmq_data:
+  redis_data:
