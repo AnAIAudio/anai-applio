@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y \
     cmake \
     tk \
     ffmpeg \
+    tini \
     && apt clean && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml uv.lock ./
@@ -38,3 +39,9 @@ ENV PATH="/app/.venv/bin:$PATH"
 # Run the app
 ENTRYPOINT ["python3"]
 CMD ["app.py"]
+
+COPY docker/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+ENTRYPOINT ["tini", "-g", "--", "/app/entrypoint.sh"]
+CMD []
