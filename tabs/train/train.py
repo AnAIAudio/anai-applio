@@ -361,12 +361,120 @@ def auto_enable_checkpointing():
         return False
 
 
+def poll(task_id: str):
+    import re
+    import redis
+    from celery.result import AsyncResult
+    from utils.celery_task_util import celery_app
+
+    job_redis_url = os.getenv("JOB_INDEX_REDIS_URL")
+
+    if not task_id:
+        return "", 0, "ID 없음"
+
+    r = redis.Redis.from_url(job_redis_url, decode_responses=True)
+
+    # 최근 200줄만 표시
+    logs = r.lrange(f"job:{task_id}:log", -200, -1)
+    log_text = "\n".join(logs)
+
+    meta = r.hgetall(f"job:{task_id}:meta")
+    total_epoch = int(meta.get("total_epoch", "0") or 0)
+
+    # progress 우선순위: meta.progress -> 로그 epoch 기반 계산(fallback)
+    progress = int(meta.get("progress", "0") or 0)
+
+    if progress <= 0 < total_epoch and logs:
+        # 로그에서 마지막 epoch=숫자 찾기
+        last_epoch = 0
+        epoch_re = re.compile(r"\bepoch=(\d+)\b")
+        for line in reversed(logs):
+            m = epoch_re.search(line)
+            if m:
+                last_epoch = int(m.group(1))
+                break
+
+        # epoch가 1부터 시작/0부터 시작 여부는 프로젝트마다 달라서
+        # 안전하게 0~100 클램프
+        if last_epoch > 0:
+            progress = int(min(100, max(0, (last_epoch / total_epoch) * 100)))
+
+    ar = AsyncResult(task_id, app=celery_app)
+    status = ar.state  # PENDING/STARTED/SUCCESS/FAILURE...
+
+    # 실패 시 메시지도 같이 보여주고 싶다면 (가능한 범위에서)
+    if status == "FAILURE":
+        try:
+            err = str(ar.result)
+            if err:
+                status = f"{status}: {err}"
+        except Exception:
+            pass
+
+    return log_text, progress, status
+
+
 # Train Tab
 def train_tab():
     # 현재 훈련 진행 상황
-    with gr.Row():
-        with gr.Column():
-            print("test")
+    with gr.Accordion(i18n("Training Monitor"), open=True):
+        with gr.Row():
+            monitor_task_id = gr.Textbox(
+                label=i18n("Task ID"),
+                placeholder=i18n("붙여넣기: celery task_id"),
+                interactive=True,
+            )
+            monitor_auto = gr.Checkbox(
+                label=i18n("Auto refresh"),
+                value=True,
+                interactive=True,
+            )
+            monitor_refresh = gr.Button(i18n("Refresh now"))
+
+        with gr.Row():
+            monitor_status = gr.Textbox(
+                label=i18n("Celery Status"),
+                value="",
+                interactive=False,
+            )
+            monitor_progress = gr.Slider(
+                minimum=0,
+                maximum=100,
+                step=1,
+                label=i18n("Progress (%)"),
+                value=0,
+                interactive=False,
+            )
+
+        monitor_logs = gr.Textbox(
+            label=i18n("Logs (recent)"),
+            value="",
+            lines=18,
+            max_lines=30,
+            interactive=False,
+        )
+
+        # 수동 갱신
+        monitor_refresh.click(
+            fn=poll,
+            inputs=[monitor_task_id],
+            outputs=[monitor_logs, monitor_progress, monitor_status],
+        )
+
+        # 자동 폴링 (예: 2초마다)
+        monitor_timer = gr.Timer(value=2.0)
+
+        def _poll_if_enabled(task_id: str, enabled: bool):
+            if not enabled:
+                # 자동 갱신 OFF면 값 유지 (Gradio 출력 개수 맞춰야 함)
+                return gr.update(), gr.update(), gr.update()
+            return poll(task_id)
+
+        monitor_timer.tick(
+            fn=_poll_if_enabled,
+            inputs=[monitor_task_id, monitor_auto],
+            outputs=[monitor_logs, monitor_progress, monitor_status],
+        )
 
     # Model settings section
     with gr.Accordion(i18n("Model Settings")):
