@@ -521,6 +521,50 @@ def run_train_script(
     vocoder: str = "HiFi-GAN",
     checkpointing: bool = False,
 ):
+    import time
+    import re
+    import redis
+
+    task_id = self.request.id
+    job_redis_url = os.getenv("JOB_INDEX_REDIS_URL")
+    r = (
+        redis.Redis.from_url(job_redis_url, decode_responses=True)
+        if job_redis_url
+        else None
+    )
+
+    log_key = f"job:{task_id}:log"
+    meta_key = f"job:{task_id}:meta"
+
+    def push_log(line: str):
+        if not r:
+            return
+        # 너무 길면 잘라 저장(선택)
+        line = line.rstrip("\n")
+        if not line:
+            return
+        r.rpush(log_key, line)
+        # 최근 2000줄 정도만 유지 (원하는 크기로 조절)
+        r.ltrim(log_key, -2000, -1)
+
+    def set_meta(**kwargs):
+        if not r:
+            return
+        # 값은 문자열로 저장되는 게 안전
+        mapping = {k: str(v) for k, v in kwargs.items() if v is not None}
+        if mapping:
+            r.hset(meta_key, mapping=mapping)
+
+    # 시작 메타
+    set_meta(
+        model_name=model_name,
+        total_epoch=total_epoch,
+        progress=0,
+        status="STARTED",
+        started_at=int(time.time()),
+    )
+    self.update_state(state="STARTED", meta={"progress": 0, "total_epoch": total_epoch})
+
     if pretrained:
         from rvc.lib.tools.pretrained_selector import pretrained_selector
 
@@ -561,9 +605,66 @@ def run_train_script(
             ],
         ),
     ]
-    subprocess.run(command, check=True)
-    run_index_script(model_name, index_algorithm)
-    return f"Model {model_name} trained successfully."
+
+    epoch_re = re.compile(r"\bepoch=(\d+)\b")
+    last_progress = 0
+
+    push_log(f"[celery] task_id={task_id} starting training: {' '.join(command)}")
+    try:
+        proc = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            universal_newlines=True,
+        )
+
+        assert proc.stdout is not None
+        for line in proc.stdout:
+            push_log(line)
+
+            m = epoch_re.search(line)
+            if m and total_epoch > 0:
+                epoch = int(m.group(1))
+                progress = int(min(100, max(0, int((epoch / total_epoch) * 100))))
+                # 너무 자주 쓰지 않게 변화 있을 때만 업데이트
+                if progress != last_progress:
+                    last_progress = progress
+                    set_meta(progress=progress, epoch=epoch, status="PROGRESS")
+                    self.update_state(
+                        state="PROGRESS",
+                        meta={
+                            "progress": progress,
+                            "epoch": epoch,
+                            "total_epoch": total_epoch,
+                        },
+                    )
+
+        rc = proc.wait()
+        if rc != 0:
+            raise subprocess.CalledProcessError(rc, command)
+
+        push_log("[celery] training finished. building index...")
+        set_meta(status="INDEXING")
+        self.update_state(
+            state="PROGRESS", meta={"progress": last_progress, "phase": "INDEXING"}
+        )
+
+        run_index_script(model_name, index_algorithm)
+
+        set_meta(progress=100, status="SUCCESS", finished_at=int(time.time()))
+        push_log("[celery] SUCCESS")
+        return f"Model {model_name} trained successfully."
+    except Exception as e:
+        set_meta(status="FAILURE", error=str(e), finished_at=int(time.time()))
+        push_log(f"[celery] FAILURE: {e}")
+        # Celery가 FAILURE로 잡도록 예외 재발생
+        raise
+
+    # subprocess.run(command, check=True)
+    # run_index_script(model_name, index_algorithm)
+    # return f"Model {model_name} trained successfully."
 
 
 # Index
