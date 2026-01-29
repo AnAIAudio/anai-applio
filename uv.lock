@@ -165,7 +165,7 @@ dependencies = [
     { name = "boto3" },
     { name = "boto3-stubs", extra = ["secretsmanager"] },
     { name = "botocore" },
-    { name = "celery", extra = ["librabbitmq"] },
+    { name = "celery" },
     { name = "celery-types" },
     { name = "certifi" },
     { name = "dotenv" },
@@ -218,7 +218,7 @@ requires-dist = [
     { name = "boto3", specifier = ">=1.40.24" },
     { name = "boto3-stubs", extras = ["secretsmanager"], specifier = ">=1.40.24" },
     { name = "botocore", specifier = ">=1.40.24" },
-    { name = "celery", extras = ["librabbitmq"], specifier = ">=5.6.2" },
+    { name = "celery", specifier = ">=5.6.2" },
     { name = "celery-types", specifier = ">=0.24.0" },
     { name = "certifi", specifier = ">=2025.8.3" },
     { name = "dotenv", specifier = ">=0.9.9" },
@@ -508,11 +508,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/8f/9d/3d13596519cfa7207a6f9834f4b082554845eb3cd2684b5f8535d50c7c44/celery-5.6.2.tar.gz", hash = "sha256:4a8921c3fcf2ad76317d3b29020772103581ed2454c4c042cc55dcc43585009b", size = 1718802, upload-time = "2026-01-04T12:35:58.012Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/dd/bd/9ecd619e456ae4ba73b6583cc313f26152afae13e9a82ac4fe7f8856bfd1/celery-5.6.2-py3-none-any.whl", hash = "sha256:3ffafacbe056951b629c7abcf9064c4a2366de0bdfc9fdba421b97ebb68619a5", size = 445502, upload-time = "2026-01-04T12:35:55.894Z" },
-]
-
-[package.optional-dependencies]
-librabbitmq = [
-    { name = "librabbitmq", marker = "python_full_version < '3.11'" },
 ]
 
 [[package]]
@@ -1547,16 +1542,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/6f/6b/c875b30a1ba490860
 wheels = [
     { url = "https://files.pythonhosted.org/packages/83/60/d497a310bde3f01cb805196ac61b7ad6dc5dcf8dce66634dc34364b20b4f/lazy_loader-0.4-py3-none-any.whl", hash = "sha256:342aa8e14d543a154047afb4ba8ef17f5563baad3fc610d7b15b213b0f119efc", size = 12097, upload-time = "2024-04-05T13:03:10.514Z" },
 ]
-
-[[package]]
-name = "librabbitmq"
-version = "2.0.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "amqp", marker = "python_full_version < '3.11'" },
-    { name = "six", marker = "python_full_version < '3.11'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/f4/4e/8f8bf33d44f3441d6f6c29b299cc847570b2c864bd8d2f9871aa6c03b73e/librabbitmq-2.0.0.tar.gz", hash = "sha256:ffa2363a860ab5dcc3ce3703247e05e940c73d776c03a3f3f9deaf3cf43bb96c", size = 42557, upload-time = "2018-05-30T14:48:52.935Z" }
 
 [[package]]
 name = "librosa"
