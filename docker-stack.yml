@@ -22,11 +22,47 @@ services:
         constraints:
           - node.role == manager
 
+  rabbitmq:
+    image: rabbitmq:4.2-management
+    environment:
+      - RABBITMQ_DEFAULT_USER=anai
+      - RABBITMQ_DEFAULT_PASS=ydVyM3KDkJ
+      - RABBITMQ_DEFAULT_VHOST=/
+    networks:
+      - app-network
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+
+  redis:
+    image: redis:7.4.7-alpine
+    command: [ "redis-server", "--appendonly", "yes" ]
+    networks:
+      - app-network
+    volumes:
+      - redis_data:/data
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+
   applio:
     image: 339712720989.dkr.ecr.ap-northeast-1.amazonaws.com/dev/anai-applio:latest
     environment:
       - RUN_ENV=development
       - NVIDIA_VISIBLE_DEVICES=all
+      - RABBIT_URL=amqp://anai:ydVyM3KDkJ@rabbitmq:5672/
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+      - JOB_INDEX_REDIS_URL=redis://redis:6379/2
     networks:
       - app-network
     volumes:
@@ -94,6 +130,12 @@ volumes:
       type: nfs
       o: "addr=211.233.64.121,rw,nolock,soft"
       device: ":/data/nfs/share/anai-applio/logs"
+
+  rabbitmq_data:
+    driver: local
+
+  redis_data:
+    driver: local
 
 secrets:
   aws_credentials:
