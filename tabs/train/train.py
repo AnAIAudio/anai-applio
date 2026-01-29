@@ -862,7 +862,10 @@ def train_tab():
                 message = "You must agree to the Terms of Use to proceed."
                 gr.Info(message)
                 return message
-            return run_train_script(*args)
+
+            async_result = run_train_script.delay(*args)
+            return f"Training job queued. task_id={async_result.id}"
+            # return run_train_script(*args)
 
         terms_checkbox = gr.Checkbox(
             label=i18n("I agree to the terms of use"),

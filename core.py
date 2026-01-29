@@ -494,60 +494,13 @@ def run_extract_script(
     return f"Model {model_name} extracted successfully."
 
 
-def run_train_script(
-    model_name: str,
-    save_every_epoch: int,
-    save_only_latest: bool,
-    save_every_weights: bool,
-    total_epoch: int,
-    sample_rate: int,
-    batch_size: int,
-    gpu: int,
-    overtraining_detector: bool,
-    overtraining_threshold: int,
-    pretrained: bool,
-    cleanup: bool,
-    index_algorithm: str = "Auto",
-    cache_data_in_gpu: bool = False,
-    custom_pretrained: bool = False,
-    g_pretrained_path: str = None,
-    d_pretrained_path: str = None,
-    vocoder: str = "HiFi-GAN",
-    checkpointing: bool = False,
-):
-    # 실제 실행 부분을 별도 함수나 인자로 감싸서 큐에 전달
-    args = (
-        model_name,
-        save_every_epoch,
-        save_only_latest,
-        save_every_weights,
-        total_epoch,
-        sample_rate,
-        batch_size,
-        gpu,
-        overtraining_detector,
-        overtraining_threshold,
-        pretrained,
-        cleanup,
-        index_algorithm,
-        cache_data_in_gpu,
-        custom_pretrained,
-        g_pretrained_path,
-        d_pretrained_path,
-        vocoder,
-        checkpointing,
-    )
-
-    from utils.task_util import task_queue, enqueue_task
-
-    # task_queue.put((_execute_train_process, args, {}))
-    enqueue_task(_execute_train_process, *args)
-
-    return f"Model {model_name} has been added to the training queue."
+from utils.celery_task_util import celery_app
 
 
 # Train
-def _execute_train_process(
+@celery_app.task(bind=True, name="applio.run_train_script")
+def run_train_script(
+    self,
     model_name: str,
     save_every_epoch: int,
     save_only_latest: bool,
@@ -608,7 +561,7 @@ def _execute_train_process(
             ],
         ),
     ]
-    subprocess.run(command)
+    subprocess.run(command, check=True)
     run_index_script(model_name, index_algorithm)
     return f"Model {model_name} trained successfully."
 

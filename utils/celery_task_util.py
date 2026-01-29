@@ -7,9 +7,7 @@ celery_app = Celery(
     "worker",
     broker=rabbit_url,
     include=[
-        "services.translate.video_translate_service",
-        "services.translate.srt_translate_service",
-        "services.align.mfa_service",
+        "core",
     ],
 )
 

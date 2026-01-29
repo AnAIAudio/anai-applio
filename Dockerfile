@@ -37,10 +37,10 @@ VOLUME ["/app/logs/"]
 ENV PATH="/app/.venv/bin:$PATH"
 
 # Run the app
-ENTRYPOINT ["python3"]
-CMD ["app.py"]
+#ENTRYPOINT ["python3"]
+#CMD ["app.py"]
 
-COPY docker/entrypoint.sh /app/entrypoint.sh
+#COPY docker/entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
 ENTRYPOINT ["tini", "-g", "--", "/app/entrypoint.sh"]
