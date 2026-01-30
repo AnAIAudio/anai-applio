@@ -362,61 +362,61 @@ def auto_enable_checkpointing():
         return False
 
 
-def poll(task_id: str):
-    import re
-    import redis
-    from celery.result import AsyncResult
-    from utils.celery_task_util import celery_app
-
-    job_redis_url = os.getenv("JOB_INDEX_REDIS_URL")
-
-    if not task_id:
-        return "", 0, "ID 없음"
-
-    r = redis.Redis.from_url(job_redis_url, decode_responses=True)
-
-    # 최근 200줄만 표시
-    logs = r.lrange(f"job:{task_id}:log", -200, -1)
-    log_text = "\n".join(logs)
-
-    meta = r.hgetall(f"job:{task_id}:meta")
-    total_epoch = int(meta.get("total_epoch", "0") or 0)
-
-    # progress 우선순위: meta.progress -> 로그 epoch 기반 계산(fallback)
-    progress = int(meta.get("progress", "0") or 0)
-
-    if progress <= 0 < total_epoch and logs:
-        # 로그에서 마지막 epoch=숫자 찾기
-        last_epoch = 0
-        epoch_re = re.compile(r"\bepoch=(\d+)\b")
-        for line in reversed(logs):
-            m = epoch_re.search(line)
-            if m:
-                last_epoch = int(m.group(1))
-                break
-
-        # epoch가 1부터 시작/0부터 시작 여부는 프로젝트마다 달라서
-        # 안전하게 0~100 클램프
-        if last_epoch > 0:
-            progress = int(min(100, max(0, (last_epoch / total_epoch) * 100)))
-
-    ar = AsyncResult(task_id, app=celery_app)
-    status = ar.state  # PENDING/STARTED/SUCCESS/FAILURE...
-
-    # 실패 시 메시지도 같이 보여주고 싶다면 (가능한 범위에서)
-    if status == "FAILURE":
-        try:
-            err = str(ar.result)
-            if err:
-                status = f"{status}: {err}"
-        except Exception:
-            pass
-
-    return log_text, progress, status
+from utils.redis_util import poll, get_queue_snapshot
 
 
 # Train Tab
 def train_tab():
+    # 큐 모니터
+    with gr.Accordion(i18n("Queue Monitor"), open=False):
+        with gr.Row():
+            queue_auto = gr.Checkbox(
+                label=i18n("Auto refresh"), value=True, interactive=True
+            )
+            queue_limit = gr.Slider(
+                5, 100, value=30, step=1, label=i18n("Max rows"), interactive=True
+            )
+            queue_refresh = gr.Button(i18n("Refresh now"))
+
+        queue_summary = gr.Textbox(label=i18n("Summary"), value="", interactive=False)
+        queue_table = gr.Dataframe(
+            headers=[
+                "task_id",
+                "state",
+                "progress(%)",
+                "total_epoch",
+                "model_name",
+                "age_sec",
+            ],
+            datatype=["str", "str", "number", "number", "str", "number"],
+            row_count=0,
+            col_count=(6, "fixed"),
+            interactive=False,
+        )
+
+        def _queue_refresh(limit: int):
+            rows, summary = get_queue_snapshot(limit=limit)
+            return summary, rows
+
+        queue_refresh.click(
+            fn=_queue_refresh,
+            inputs=[queue_limit],
+            outputs=[queue_summary, queue_table],
+        )
+
+        queue_timer = gr.Timer(value=2.0)
+
+        def _queue_tick(enabled: bool, limit: int):
+            if not enabled:
+                return gr.update(), gr.update()
+            return _queue_refresh(limit)
+
+        queue_timer.tick(
+            fn=_queue_tick,
+            inputs=[queue_auto, queue_limit],
+            outputs=[queue_summary, queue_table],
+        )
+
     # 현재 훈련 진행 상황
     with gr.Accordion(i18n("Training Monitor"), open=True):
         with gr.Row():
