@@ -130,6 +130,88 @@ def cleanup_logs_dir_result() -> str:
     return "\n".join(message)
 
 
+def list_logs_subdirs(
+    keep_names=("mute", "mute_spin", "reference", "zips")
+) -> List[str]:
+    """
+    logs 바로 아래의 디렉토리 이름 목록(삭제 후보) 반환
+    """
+    logs_root = os.path.join(os.getcwd(), "logs")
+    if not os.path.isdir(logs_root):
+        return []
+
+    keep_set = set(keep_names)
+    names: List[str] = []
+
+    for name in os.listdir(logs_root):
+        full = os.path.join(logs_root, name)
+        if not os.path.isdir(full):
+            continue
+        if os.path.islink(full):
+            continue  # 안전상 심볼릭 링크 디렉토리는 제외
+        if name in keep_set:
+            continue  # 보호 대상 제외
+        names.append(name)
+
+    names.sort()
+    return names
+
+
+def cleanup_selected_logs_dirs(
+    selected_names: List[str],
+    keep_names=("mute", "mute_spin", "reference", "zips"),
+) -> str:
+    logs_root = os.path.join(os.getcwd(), "logs")
+    if not os.path.isdir(logs_root):
+        return "logs 디렉토리가 없습니다."
+
+    if not selected_names:
+        return "선택된 디렉토리가 없습니다."
+
+    keep_set = set(keep_names)
+    removed, failed, skipped = [], [], []
+
+    for name in selected_names:
+        if name in keep_set:
+            skipped.append(name)
+            continue
+
+        full = os.path.join(logs_root, name)
+
+        # 방어: logs 바로 아래만, 그리고 디렉토리만 삭제
+        if (
+            os.path.dirname(full) != logs_root
+            or not os.path.isdir(full)
+            or os.path.islink(full)
+        ):
+            failed.append(f"{name} (유효하지 않음)")
+            continue
+
+        try:
+            shutil.rmtree(full, onerror=_on_rm_error)
+            removed.append(name)
+        except Exception as e:
+            failed.append(f"{name} ({type(e).__name__})")
+
+    lines = [
+        f"선택: {len(selected_names)}",
+        f"삭제 성공: {len(removed)}",
+        f"삭제 실패: {len(failed)}",
+        f"건너뜀(보호): {len(skipped)}",
+    ]
+    if removed:
+        lines.append("삭제됨:")
+        lines.extend([f" - {n}" for n in removed])
+    if skipped:
+        lines.append("보호로 인해 건너뜀:")
+        lines.extend([f" - {n}" for n in skipped])
+    if failed:
+        lines.append("실패/무시:")
+        lines.extend([f" - {n}" for n in failed])
+
+    return "\n".join(lines)
+
+
 def cleanup_temp_dir_tab():
     with gr.Row():
         with gr.Column():
@@ -157,4 +239,29 @@ def cleanup_temp_dir_tab():
                 fn=cleanup_logs_dir_result,
                 inputs=[],
                 outputs=[cleanup_logs_status],
+            )
+
+    with gr.Row():
+        with gr.Column():
+            gr.Markdown(f"### {i18n('Select and delete train logs')}")
+
+            refresh_btn = gr.Button(i18n("Refresh list"), variant="secondary")
+            logs_choices = gr.CheckboxGroup(
+                choices=[],
+                label=i18n("Select the logs subdirectory to delete"),
+            )
+
+            delete_btn = gr.Button(i18n("Refresh now"), variant="stop")
+            delete_status = gr.Textbox(label=i18n("Clean state"), lines=10)
+
+            refresh_btn.click(
+                fn=list_logs_subdirs,
+                inputs=[],
+                outputs=[logs_choices],
+            )
+
+            delete_btn.click(
+                fn=cleanup_selected_logs_dirs,
+                inputs=[logs_choices],
+                outputs=[delete_status],
             )
