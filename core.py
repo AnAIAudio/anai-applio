@@ -495,6 +495,7 @@ def run_extract_script(
 
 
 from utils.celery_task_util import celery_app
+from utils.redis_util import ACTIVE_JOBS_ZSET_KEY
 
 
 # Train
@@ -532,6 +533,17 @@ def run_train_script(
         if job_redis_url
         else None
     )
+
+    enq = int(time.time())
+
+    r.hset(
+        f"job:{task_id}:meta",
+        mapping={
+            "enqueued_at": enq,
+            "model_name": model_name,
+        },
+    )
+    r.zadd(ACTIVE_JOBS_ZSET_KEY, {task_id: enq})
 
     log_key = f"job:{task_id}:log"
     meta_key = f"job:{task_id}:meta"

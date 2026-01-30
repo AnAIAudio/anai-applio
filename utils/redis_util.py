@@ -1,5 +1,8 @@
 import os
 
+# 활성 작업 인덱스(ZSET) 키: 전체 스캔 방지용
+ACTIVE_JOBS_ZSET_KEY = "jobs:active"
+
 
 def poll(task_id: str):
     import re
@@ -40,6 +43,12 @@ def poll(task_id: str):
     ar = AsyncResult(task_id, app=celery_app)
     status = ar.state  # PENDING/STARTED/SUCCESS/FAILURE...
 
+    if status in ("SUCCESS", "FAILURE", "REVOKED"):
+        try:
+            r.zrem(ACTIVE_JOBS_ZSET_KEY, task_id)
+        except Exception:
+            pass
+
     if status == "FAILURE":
         try:
             err = str(ar.result)
@@ -68,34 +77,36 @@ def get_queue_snapshot(limit: int = 30):
 
     r = redis.Redis.from_url(job_redis_url, decode_responses=True)
 
-    rows = []
+    limit = max(1, int(limit))
     now_ts = int(time.time())
 
-    # 주의: KEYS는 위험하니 scan_iter 사용
-    for key in r.scan_iter(match="job:*:meta", count=500):
-        # key: job:{task_id}:meta
-        parts = key.split(":")
-        if len(parts) < 3:
-            continue
-        task_id = parts[1]
+    # score(enqueued_at) 기준 오름차순: 오래 기다린 것부터
+    items = r.zrange(ACTIVE_JOBS_ZSET_KEY, 0, limit - 1, withscores=True)
 
-        meta = r.hgetall(key) or {}
-        # 메타가 너무 비어있으면 스킵
-        if not meta:
-            continue
-
+    rows = []
+    for task_id, score in items:
+        meta = r.hgetall(f"job:{task_id}:meta") or {}
         ar = AsyncResult(task_id, app=celery_app)
         state = ar.state
 
-        # 완료된 작업은 목록에서 제외(원하면 포함하도록 바꿔도 됨)
+        # terminal이면 여기서도 청소(Queue Monitor만 켜도 정리됨)
         if state in ("SUCCESS", "FAILURE", "REVOKED"):
+            try:
+                r.zrem(ACTIVE_JOBS_ZSET_KEY, task_id)
+            except Exception:
+                pass
             continue
 
         progress = int(meta.get("progress", "0") or 0)
         total_epoch = int(meta.get("total_epoch", "0") or 0)
         model_name = meta.get("model_name", "") or ""
+
         enq = int(meta.get("enqueued_at", "0") or 0)
-        age_sec = (now_ts - enq) if enq > 0 else None
+        # meta가 없으면 ZSET score를 enqueue 시간으로 사용
+        if enq <= 0:
+            enq = int(score) if score else 0
+
+        age_sec = (now_ts - enq) if enq > 0 else ""
 
         rows.append(
             {
@@ -104,21 +115,10 @@ def get_queue_snapshot(limit: int = 30):
                 "progress(%)": progress,
                 "total_epoch": total_epoch,
                 "model_name": model_name,
-                "age_sec": age_sec if age_sec is not None else "",
+                "age_sec": age_sec,
             }
         )
 
-    # 최신(최근 enqueue) 우선으로 정렬: age_sec가 작은 것 우선
-    def _sort_key(x):
-        a = x.get("age_sec")
-        return a if isinstance(a, int) else 10**12
-
-    rows.sort(key=_sort_key)
-
-    # limit 적용
-    rows = rows[: max(1, int(limit))]
-
-    # 요약 텍스트
     pending = sum(1 for x in rows if x.get("state") == "PENDING")
     started = sum(1 for x in rows if x.get("state") == "STARTED")
     summary = f"표시 {len(rows)}개 (PENDING={pending}, STARTED={started})"
