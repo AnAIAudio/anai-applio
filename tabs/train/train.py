@@ -371,14 +371,25 @@ def train_tab():
     with gr.Accordion(i18n("Queue Monitor"), open=False):
         with gr.Row():
             queue_auto = gr.Checkbox(
-                label=i18n("Auto refresh"), value=True, interactive=True
+                label=i18n("Auto refresh"),
+                value=False,
+                interactive=True,
             )
             queue_limit = gr.Slider(
-                5, 100, value=30, step=1, label=i18n("Max rows"), interactive=True
+                5,
+                100,
+                value=30,
+                step=1,
+                label=i18n("Max rows"),
+                interactive=True,
             )
             queue_refresh = gr.Button(i18n("Refresh now"))
 
-        queue_summary = gr.Textbox(label=i18n("Summary"), value="", interactive=False)
+        queue_summary = gr.Textbox(
+            label=i18n("Summary"),
+            value="",
+            interactive=False,
+        )
         queue_table = gr.Dataframe(
             headers=[
                 "task_id",
@@ -404,7 +415,7 @@ def train_tab():
             outputs=[queue_summary, queue_table],
         )
 
-        queue_timer = gr.Timer(value=2.0)
+        queue_timer = gr.Timer(value=30.0)
 
         def _queue_tick(enabled: bool, limit: int):
             if not enabled:
