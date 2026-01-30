@@ -329,5 +329,11 @@
   "Merge Audio": "오디오 이어붙이기",
   "Temp directory Clean up": "임시 폴더 정리",
   "Merged audio file": "병합된 WAV 파일",
-  "Status": "상태"
+  "Status": "상태",
+  "Queue Monitor": "대기열 모니터",
+  "Refresh now": "새로 고침",
+  "Auto refresh": "자동 새로 고침",
+  "Training Monitor": "학습 모니터",
+  "Progress (%)": "진행률 (%)",
+  "Max rows": "최대 행 수"
 }
