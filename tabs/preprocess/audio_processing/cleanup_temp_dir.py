@@ -251,7 +251,7 @@ def cleanup_temp_dir_tab():
                 label=i18n("Select the logs subdirectory to delete"),
             )
 
-            delete_btn = gr.Button(i18n("Refresh now"), variant="stop")
+            delete_btn = gr.Button(i18n("Delete selected items"), variant="stop")
             delete_status = gr.Textbox(label=i18n("Clean state"), lines=10)
 
             refresh_btn.click(
