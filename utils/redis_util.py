@@ -71,13 +71,17 @@ def get_queue_snapshot(limit: int = 30):
     from celery.result import AsyncResult
     from utils.celery_task_util import celery_app
 
+    def _clip(s: object, n: int = 120) -> str:
+        s = "" if s is None else str(s)
+        return s if len(s) <= n else (s[: n - 1] + "…")
+
     job_redis_url = os.getenv("JOB_INDEX_REDIS_URL")
     if not job_redis_url:
         return [], "JOB_INDEX_REDIS_URL 미설정"
 
     r = redis.Redis.from_url(job_redis_url, decode_responses=True)
 
-    limit = max(1, int(limit))
+    limit = max(1, min(50, int(limit)))
     now_ts = int(time.time())
 
     # score(enqueued_at) 기준 오름차순: 오래 기다린 것부터
@@ -99,28 +103,28 @@ def get_queue_snapshot(limit: int = 30):
 
         progress = int(meta.get("progress", "0") or 0)
         total_epoch = int(meta.get("total_epoch", "0") or 0)
-        model_name = meta.get("model_name", "") or ""
+
+        model_name = _clip(meta.get("model_name", ""), 80)
 
         enq = int(meta.get("enqueued_at", "0") or 0)
-        # meta가 없으면 ZSET score를 enqueue 시간으로 사용
         if enq <= 0:
             enq = int(score) if score else 0
 
         age_sec = (now_ts - enq) if enq > 0 else ""
 
         rows.append(
-            {
-                "task_id": task_id,
-                "state": state,
-                "progress(%)": progress,
-                "total_epoch": total_epoch,
-                "model_name": model_name,
-                "age_sec": age_sec,
-            }
+            [
+                _clip(task_id, 80),
+                _clip(state, 40),
+                progress,
+                total_epoch,
+                model_name,
+                age_sec,
+            ]
         )
 
-    pending = sum(1 for x in rows if x.get("state") == "PENDING")
-    started = sum(1 for x in rows if x.get("state") == "STARTED")
+    pending = sum(1 for row in rows if len(row) > 1 and row[1] == "PENDING")
+    started = sum(1 for row in rows if len(row) > 1 and row[1] == "STARTED")
     summary = f"표시 {len(rows)}개 (PENDING={pending}, STARTED={started})"
 
     return rows, summary
