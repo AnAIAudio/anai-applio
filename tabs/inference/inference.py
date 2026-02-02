@@ -547,22 +547,25 @@ def inference_tab():
                 inputs=[],
                 outputs=[model_file, index_file],
             )
-            model_file.select(
-                fn=lambda model_file_value: match_index(model_file_value),
-                inputs=[model_file],
-                outputs=[index_file],
-            )
-            model_title_text.select(
-                fn=lambda model_file_value: match_index_using_guid(model_file_value),
-                inputs=[model_title_text],
-                outputs=[model_file, index_file],
-            )
+
+        model_file.select(
+            fn=lambda model_file_value: match_index(model_file_value),
+            inputs=[model_file],
+            outputs=[index_file],
+        )
+        model_title_text.select(
+            fn=lambda model_file_value: match_index_using_guid(model_file_value),
+            inputs=[model_title_text],
+            outputs=[model_file, index_file],
+        )
 
     # Single inference tab
     with gr.Tab(i18n("Single")):
         with gr.Column():
             upload_audio = gr.Audio(
-                label=i18n("Upload Audio"), type="filepath", editable=False
+                label=i18n("Upload Audio"),
+                type="filepath",
+                editable=False,
             )
             with gr.Row():
                 audio = gr.Dropdown(

@@ -180,8 +180,9 @@ def run_infer_script(
     infer_pipeline.convert_audio(
         **kwargs,
     )
-    return f"File {input_path} inferred successfully.", output_path.replace(
-        ".wav", f".{export_format.lower()}"
+    return (
+        f"File {input_path} inferred successfully.",
+        output_path.replace(".wav", f".{export_format.lower()}"),
     )
 
 
