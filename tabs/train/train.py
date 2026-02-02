@@ -411,7 +411,7 @@ def train_tab():
             datatype=["str", "str", "number", "number", "str", "number"],
             row_count=0,
             col_count=(6, "fixed"),
-            interactive=False,
+            interactive=True,
         )
 
         def _queue_refresh(limit: int):
