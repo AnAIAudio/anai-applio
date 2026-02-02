@@ -73,7 +73,7 @@ services:
         tmpfs:
           size: 34359738368
     deploy:
-      replicas: 2
+      replicas: 0
       placement:
         constraints:
           - node.labels.gpu == true
