@@ -385,11 +385,20 @@ def train_tab():
             )
             queue_refresh = gr.Button(i18n("Refresh now"))
 
+            queue_delete = gr.Button(i18n("Delete selected"), variant="stop")
+
         queue_summary = gr.Textbox(
             label=i18n("Summary"),
             value="",
             interactive=False,
         )
+
+        selected_task_id = gr.Textbox(
+            label=i18n("Selected task_id"),
+            value="",
+            interactive=False,
+        )
+
         queue_table = gr.Dataframe(
             headers=[
                 "task_id",
@@ -413,6 +422,33 @@ def train_tab():
             fn=_queue_refresh,
             inputs=[queue_limit],
             outputs=[queue_summary, queue_table],
+        )
+
+        # 테이블 행 클릭 시: 첫 번째 컬럼(task_id)을 selected_task_id에 세팅
+        def _on_queue_select(evt: gr.SelectData):
+            return str(evt.value or "")
+
+        queue_table.select(
+            fn=_on_queue_select,
+            inputs=[],
+            outputs=[selected_task_id],
+        )
+
+        # Delete 버튼: Redis에서 job log/meta 삭제 + active zset 제거 후 테이블 갱신
+        def delete_selected_task(task_id: str, limit: int):
+            from utils.redis_util import delete_job
+
+            ok, msg = delete_job(task_id)
+            gr.Info(msg) if ok else gr.Warning(msg)
+
+            summary, rows = _queue_refresh(limit)
+            # 삭제했으니 선택도 비워줌
+            return "", summary, rows
+
+        queue_delete.click(
+            fn=delete_selected_task,
+            inputs=[selected_task_id, queue_limit],
+            outputs=[selected_task_id, queue_summary, queue_table],
         )
 
         queue_timer = gr.Timer(value=30.0)

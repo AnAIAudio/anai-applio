@@ -28,6 +28,37 @@ def register_job(task_id: str, model_name: str, enqueued_at: int | None = None):
     return True
 
 
+def delete_job(task_id: str) -> tuple[bool, str]:
+    """
+    Queue Monitor에서 "삭제"를 눌렀을 때:
+    - job:{task_id}:log, job:{task_id}:meta 삭제
+    - jobs:active(ZSET)에서 task_id 제거
+
+    주의: 이건 "표시/저장된 메타/로그"를 지우는 것이고,
+         Celery에서 실행 중인 작업을 강제로 중단하진 않습니다.
+    """
+    import redis
+
+    if not task_id:
+        return False, "task_id가 비어있습니다."
+
+    job_redis_url = os.getenv(JOB_INDEX_REDIS_URL)
+    if not job_redis_url:
+        return False, "JOB_INDEX_REDIS_URL 미설정"
+
+    r = redis.Redis.from_url(job_redis_url, decode_responses=True)
+
+    log_key = f"job:{task_id}:log"
+    meta_key = f"job:{task_id}:meta"
+
+    try:
+        r.delete(log_key, meta_key)
+        r.zrem(ACTIVE_JOBS_ZSET_KEY, task_id)
+        return True, f"삭제 완료: {task_id}"
+    except Exception as e:
+        return False, f"삭제 실패: {e}"
+
+
 def poll(task_id: str):
     import re
     import redis
@@ -69,7 +100,8 @@ def poll(task_id: str):
 
     if status in ("SUCCESS", "FAILURE", "REVOKED"):
         try:
-            r.zrem(ACTIVE_JOBS_ZSET_KEY, task_id)
+            if r and task_id:
+                r.zrem(ACTIVE_JOBS_ZSET_KEY, task_id)
         except Exception:
             pass
 
@@ -120,7 +152,8 @@ def get_queue_snapshot(limit: int = 30):
         # terminal이면 여기서도 청소(Queue Monitor만 켜도 정리됨)
         if state in ("SUCCESS", "FAILURE", "REVOKED"):
             try:
-                r.zrem(ACTIVE_JOBS_ZSET_KEY, task_id)
+                if r and task_id:
+                    r.zrem(ACTIVE_JOBS_ZSET_KEY, task_id)
             except Exception:
                 pass
             continue

@@ -528,6 +528,10 @@ def run_train_script(
 
     task_id = self.request.id
     job_redis_url = os.getenv(JOB_INDEX_REDIS_URL)
+
+    log_key = f"job:{task_id}:log"
+    meta_key = f"job:{task_id}:meta"
+
     r = (
         redis.Redis.from_url(job_redis_url, decode_responses=True)
         if job_redis_url
@@ -536,17 +540,19 @@ def run_train_script(
 
     enq = int(time.time())
 
-    r.hset(
-        f"job:{task_id}:meta",
-        mapping={
-            "enqueued_at": enq,
-            "model_name": model_name,
-        },
-    )
-    r.zadd(ACTIVE_JOBS_ZSET_KEY, {task_id: enq})
+    if r:
+        # cleanup=True면 기존 로그/메타를 제거하고 새로 시작
+        if cleanup:
+            r.delete(log_key, meta_key)
 
-    log_key = f"job:{task_id}:log"
-    meta_key = f"job:{task_id}:meta"
+        r.hset(
+            meta_key,
+            mapping={
+                "enqueued_at": enq,
+                "model_name": model_name,
+            },
+        )
+        r.zadd(ACTIVE_JOBS_ZSET_KEY, {task_id: enq})
 
     def push_log(line: str):
         if not r:
@@ -673,7 +679,9 @@ def run_train_script(
         push_log(f"[celery] FAILURE: {e}")
         # Celery가 FAILURE로 잡도록 예외 재발생
         raise
-
+    finally:
+        if r:
+            r.zrem(ACTIVE_JOBS_ZSET_KEY, task_id)
     # subprocess.run(command, check=True)
     # run_index_script(model_name, index_algorithm)
     # return f"Model {model_name} trained successfully."
