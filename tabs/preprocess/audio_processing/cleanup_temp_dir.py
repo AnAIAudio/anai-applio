@@ -265,3 +265,4 @@ def cleanup_temp_dir_tab():
                 inputs=[logs_choices],
                 outputs=[delete_status],
             )
+ 

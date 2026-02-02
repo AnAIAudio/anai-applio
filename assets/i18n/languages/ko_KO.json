@@ -340,5 +340,6 @@
   "Select the logs subdirectory to delete": "삭제할 logs 하위 디렉토리를 선택하세요",
   "Select and delete train logs": "학습 로그 선택 삭제",
   "Clean state": "정리 상태",
-  "Delete selected items": "선택 항목 삭제"
+  "Delete selected items": "선택 항목 삭제",
+  "The timbre models that AnAI has:": "AnAI가 가지고 있는 음색 모델 목록:"
 }
