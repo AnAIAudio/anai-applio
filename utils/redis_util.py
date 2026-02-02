@@ -11,7 +11,7 @@ def poll(task_id: str):
     from celery.result import AsyncResult
     from utils.celery_task_util import celery_app
 
-    job_redis_url = os.getenv("JOB_INDEX_REDIS_URL")
+    job_redis_url = os.getenv(JOB_INDEX_REDIS_URL)
 
     if not task_id:
         return "", 0, "ID 없음"
@@ -76,7 +76,7 @@ def get_queue_snapshot(limit: int = 30):
         s = "" if s is None else str(s)
         return s if len(s) <= n else (s[: n - 1] + "…")
 
-    job_redis_url = os.getenv("JOB_INDEX_REDIS_URL")
+    job_redis_url = os.getenv(JOB_INDEX_REDIS_URL)
     if not job_redis_url:
         return [], "JOB_INDEX_REDIS_URL 미설정"
 
