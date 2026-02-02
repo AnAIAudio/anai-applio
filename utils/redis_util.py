@@ -5,6 +5,29 @@ ACTIVE_JOBS_ZSET_KEY = "jobs:active"
 JOB_INDEX_REDIS_URL = "JOB_INDEX_REDIS_URL"
 
 
+def register_job(task_id: str, model_name: str, enqueued_at: int | None = None):
+    """
+    Celery 워커가 집어가기 전(PENDING)에도 Queue Monitor에 보이도록
+    enqueue 시점에 Redis에 job 메타/active zset을 등록한다.
+    """
+    import time
+    import redis
+
+    job_redis_url = os.getenv(JOB_INDEX_REDIS_URL)
+    if not job_redis_url or not task_id:
+        return False
+
+    r = redis.Redis.from_url(job_redis_url, decode_responses=True)
+    ts = int(time.time()) if enqueued_at is None else int(enqueued_at)
+
+    meta_key = f"job:{task_id}:meta"
+    # 이미 존재하면 enqueued_at 같은 값은 덮어쓰지 않는 쪽이 안전(선택)
+    r.hsetnx(meta_key, "enqueued_at", str(ts))
+    r.hset(meta_key, mapping={"model_name": str(model_name), "status": "PENDING"})
+    r.zadd(ACTIVE_JOBS_ZSET_KEY, {task_id: ts})
+    return True
+
+
 def poll(task_id: str):
     import re
     import redis

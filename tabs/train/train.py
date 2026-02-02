@@ -940,6 +940,15 @@ def train_tab():
                 return message
 
             async_result = run_train_script.delay(*args)
+
+            # enqueue 시점에 Redis에도 등록해서 Queue Monitor에 PENDING이 보이게 함
+            try:
+                from utils.redis_util import register_job
+
+                register_job(async_result.id, model_name=args[0])
+            except Exception:
+                pass
+
             return f"Training job queued. task_id={async_result.id}"
             # return run_train_script(*args)
 
