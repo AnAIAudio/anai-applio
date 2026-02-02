@@ -7,8 +7,6 @@ services:
       - "6969:6969"
     container_name: anai-applio
     restart: always
-    pid: host
-    privileged: true
     environment:
       - RUN_ENV=development
       - GRADIO_ROOT_PATH=/applio
