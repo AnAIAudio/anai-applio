@@ -524,9 +524,10 @@ def run_train_script(
     import time
     import re
     import redis
+    from utils.redis_util import JOB_INDEX_REDIS_URL
 
     task_id = self.request.id
-    job_redis_url = os.getenv("JOB_INDEX_REDIS_URL")
+    job_redis_url = os.getenv(JOB_INDEX_REDIS_URL)
     r = (
         redis.Redis.from_url(job_redis_url, decode_responses=True)
         if job_redis_url
