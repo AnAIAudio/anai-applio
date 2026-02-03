@@ -544,7 +544,7 @@ def train_tab():
                     choices=["RVC", "Applio"],
                     value="RVC",
                     interactive=True,
-                    visible=False,  # to be visible once pretraineds are ready
+                    visible=False,
                 )
             with gr.Column():
                 sampling_rate = gr.Radio(
@@ -749,10 +749,11 @@ def train_tab():
                 info=i18n("Model used for learning speaker embedding."),
                 choices=[
                     "contentvec",
-                    "spin",
-                    "chinese-hubert-base",
-                    "japanese-hubert-base",
-                    "korean-hubert-base",
+                    # "spin",
+                    "spin-v2",
+                    # "chinese-hubert-base",
+                    # "japanese-hubert-base",
+                    # "korean-hubert-base",
                     "custom",
                 ],
                 value="contentvec",
@@ -771,24 +772,28 @@ def train_tab():
             interactive=True,
         )
         with gr.Row(visible=False) as embedder_custom:
-            with gr.Accordion("Custom Embedder", open=True):
+            with gr.Accordion(i18n("Custom Embedder"), open=True):
                 with gr.Row():
                     embedder_model_custom = gr.Dropdown(
-                        label="Select Custom Embedder",
+                        label=i18n("Select Custom Embedder"),
                         choices=refresh_embedders_folders(),
                         interactive=True,
                         allow_custom_value=True,
                     )
-                    refresh_embedders_button = gr.Button("Refresh embedders")
-                folder_name_input = gr.Textbox(label="Folder Name", interactive=True)
+                    refresh_embedders_button = gr.Button(i18n("Refresh embedders"))
+                folder_name_input = gr.Textbox(
+                    label=i18n("Folder Name"), interactive=True
+                )
                 with gr.Row():
                     bin_file_upload = gr.File(
-                        label="Upload .bin", type="filepath", interactive=True
+                        label=i18n("Upload .bin"), type="filepath", interactive=True
                     )
                     config_file_upload = gr.File(
-                        label="Upload .json", type="filepath", interactive=True
+                        label=i18n("Upload .json"), type="filepath", interactive=True
                     )
-                move_files_button = gr.Button("Move files to custom embedder folder")
+                move_files_button = gr.Button(
+                    i18n("Move files to custom embedder folder")
+                )
 
         extract_output_info = gr.Textbox(
             label=i18n("Output Information"),
@@ -819,7 +824,7 @@ def train_tab():
             batch_size = gr.Slider(
                 1,
                 64,
-                8,
+                4,
                 step=1,
                 label=i18n("Batch Size"),
                 info=i18n(
@@ -830,7 +835,7 @@ def train_tab():
             save_every_epoch = gr.Slider(
                 1,
                 100,
-                100,
+                10,
                 step=1,
                 label=i18n("Save Every Epoch"),
                 info=i18n("Determine at how many epochs the model will saved at."),
@@ -839,7 +844,7 @@ def train_tab():
             total_epoch = gr.Slider(
                 1,
                 10000,
-                1000,
+                200,
                 step=1,
                 label=i18n("Total Epoch"),
                 info=i18n(
@@ -863,7 +868,7 @@ def train_tab():
                         info=i18n(
                             "This setting enables you to save the weights of the model at the conclusion of each epoch."
                         ),
-                        value=False,
+                        value=True,
                         interactive=True,
                     )
                     pretrained = gr.Checkbox(
@@ -880,7 +885,7 @@ def train_tab():
                         info=i18n(
                             "Enable this setting only if you are training a new model from scratch or restarting the training. Deletes all previously generated weights and tensorboard logs."
                         ),
-                        value=True,
+                        value=False,
                         interactive=True,
                     )
                     cache_dataset_in_gpu = gr.Checkbox(
@@ -888,7 +893,7 @@ def train_tab():
                         info=i18n(
                             "Cache the dataset in GPU memory to speed up the training process."
                         ),
-                        value=True,
+                        value=False,
                         interactive=True,
                     )
                     checkpointing = gr.Checkbox(
@@ -1177,6 +1182,20 @@ def train_tab():
                         "value": "40000",
                     }, {"interactive": False, "__type__": "update", "value": "HiFi-GAN"}
 
+            def toggle_vocoder(vocoder):
+                if vocoder == "HiFi-GAN":
+                    return {
+                        "choices": ["32000", "40000", "48000"],
+                        "__type__": "update",
+                        "value": "40000",
+                    }
+                else:
+                    return {
+                        "choices": ["24000", "32000"],
+                        "__type__": "update",
+                        "value": "32000",
+                    }
+
             def update_slider_visibility(noise_reduction):
                 return gr.update(visible=noise_reduction)
 
@@ -1189,6 +1208,11 @@ def train_tab():
                 fn=toggle_architecture,
                 inputs=[architecture],
                 outputs=[sampling_rate, vocoder],
+            )
+            vocoder.change(
+                fn=toggle_vocoder,
+                inputs=[vocoder],
+                outputs=[sampling_rate],
             )
             refresh.click(
                 fn=refresh_models_and_datasets,
