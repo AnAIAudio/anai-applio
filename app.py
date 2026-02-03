@@ -1,7 +1,14 @@
+# Plataform config
+from rvc.lib.platform import platform_config
+
+platform_config()
+
 import gradio as gr
 import sys
 import os
+import pathlib
 import logging
+
 from typing import Any
 
 
@@ -58,7 +65,7 @@ from tabs.tts.tts import tts_tab
 from tabs.voice_blender.voice_blender import voice_blender_tab
 from tabs.plugins.plugins import plugins_tab
 from tabs.settings.settings import settings_tab
-from tabs.preprocess.preprocessing import preprocessing_tab
+from tabs.realtime.realtime import realtime_tab
 
 # Run prerequisites
 from core import run_prerequisites_script
@@ -72,7 +79,7 @@ run_prerequisites_script(
 # Initialize i18n
 from assets.i18n.i18n import I18nAuto
 
-i18n = I18nAuto(language="ko_KR")
+i18n = I18nAuto()
 
 # Start Discord presence if enabled
 from tabs.settings.sections.presence import load_config_presence
@@ -87,11 +94,22 @@ import assets.installation_checker as installation_checker
 
 installation_checker.check_installation()
 
+# Load theme
+import assets.themes.loadThemes as loadThemes
+
+my_applio = loadThemes.load_theme() or "ParityError/Interstellar"
+client_mode = "--client" in sys.argv
 
 # Define Gradio interface
 with gr.Blocks(
     theme=gr.themes.Glass(),
     title="Applio",
+    css="footer{display:none !important}",
+    js=(
+        pathlib.Path(os.path.join(now_dir, "tabs", "realtime", "main.js")).read_text()
+        if client_mode
+        else None
+    ),
 ) as Applio:
     gr.Markdown("# AnAI Applio")
     gr.Markdown(
@@ -116,12 +134,15 @@ with gr.Blocks(
     with gr.Tab(i18n("Voice Blender")):
         voice_blender_tab()
 
+    with gr.Tab(i18n("Realtime")):
+        realtime_tab()
+
     # with gr.Tab(i18n("Plugins")):
     #     plugins_tab()
-
+    #
     # with gr.Tab(i18n("Download")):
     #     download_tab()
-
+    #
     # with gr.Tab(i18n("Report a Bug")):
     #     report_tab()
 
@@ -134,16 +155,31 @@ with gr.Blocks(
     with gr.Tab(i18n("Preprocessing")):
         preprocessing_tab()
 
+    gr.Markdown("""
+    <div style="text-align: center; font-size: 0.9em; text-color: a3a3a3;">
+    By using Applio, you agree to comply with ethical and legal standards, respect intellectual property and privacy rights, avoid harmful or prohibited uses, and accept full responsibility for any outcomes, while Applio disclaims liability and reserves the right to amend these terms.
+    </div>
+    """)
+
 
 def launch_gradio(server_name: str, server_port: int) -> None:
-    Applio.launch(
+    app, _, _ = Applio.launch(
         favicon_path="assets/anai_favicon.ico",
         share="--share" in sys.argv,
         inbrowser="--open" in sys.argv,
         server_name=server_name,
         server_port=server_port,
+        prevent_thread_lock=client_mode,
     )
-    # root_path="/",
+
+    if client_mode:
+        import time
+        from rvc.realtime.client import app as fastapi_app
+
+        app.mount("/api", fastapi_app)
+
+        while True:
+            time.sleep(5)
 
 
 def get_value_from_args(key: str, default: Any = None) -> Any:
