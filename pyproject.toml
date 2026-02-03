@@ -49,6 +49,8 @@ dependencies = [
     "celery>=5.6.2",
     "redis>=7.1.0",
     "celery-types>=0.24.0",
+    "sounddevice>=0.5.5",
+    "webrtcvad>=2.0.10",
 ]
 
 [tool.uv.sources]
