@@ -670,7 +670,6 @@ def run_train_script(
     except Exception as e:
         set_meta(status="FAILURE", error=str(e), finished_at=int(time.time()))
         push_log(f"[celery] FAILURE: {e}")
-        # Celery가 FAILURE로 잡도록 예외 재발생
         raise
     finally:
         if r:
