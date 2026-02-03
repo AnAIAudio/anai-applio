@@ -583,23 +583,33 @@ def run(
         )
     try:
         for epoch in range(epoch_str, total_epoch + 1):
-            local_done = train_and_evaluate(
-                rank,
-                epoch,
-                config,
-                [net_g, net_d],
-                [optim_g, optim_d],
-                [train_loader, None],
-                [writer_eval],
-                cache,
-                custom_save_every_weights,
-                custom_total_epoch,
-                device,
-                device_id,
-                reference,
-                fn_mel_loss,
-                scaler,
-            )
+            local_done = False
+            local_error = False
+
+            try:
+                local_done = train_and_evaluate(
+                    rank,
+                    epoch,
+                    config,
+                    [net_g, net_d],
+                    [optim_g, optim_d],
+                    [train_loader, None],
+                    [writer_eval],
+                    cache,
+                    custom_save_every_weights,
+                    custom_total_epoch,
+                    device,
+                    device_id,
+                    reference,
+                    fn_mel_loss,
+                    scaler,
+                )
+            except Exception as e:
+                local_error = True
+                print(f"[rank{rank}] train_and_evaluate failed at epoch={epoch}: {e}")
+                import traceback
+
+                traceback.print_exc()
 
             # rank0의 종료 판단을 모든 rank로 공유
             if device.type == "cuda" and n_gpus > 1:
@@ -610,13 +620,24 @@ def run(
                 )
                 dist.broadcast(done_tensor, src=0)
                 should_stop = bool(done_tensor.item())
+
+                # 2) error는 "누구든 터지면 전체 중단" (MAX all_reduce)
+                err_tensor = torch.tensor(
+                    int(local_error),
+                    dtype=torch.int32,
+                    device=f"cuda:{device_id}",
+                )
+                dist.all_reduce(err_tensor, op=dist.ReduceOp.MAX)
+                any_error = bool(err_tensor.item())
             else:
                 should_stop = bool(local_done)
+                any_error = bool(local_error)
 
-            scheduler_g.step()
-            scheduler_d.step()
+            if not any_error:
+                scheduler_g.step()
+                scheduler_d.step()
 
-            if should_stop:
+            if any_error or should_stop:
                 break
 
     except Exception as e:
@@ -632,6 +653,13 @@ def run(
             if rank == 0 and writer_eval is not None:
                 writer_eval.flush()
                 writer_eval.close()
+
+            if dist.is_available() and dist.is_initialized():
+                try:
+                    dist.barrier()
+                except Exception:
+                    pass
+                dist.destroy_process_group()
         except Exception:
             pass
 
