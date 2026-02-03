@@ -555,8 +555,8 @@ def run_train_script(
         if not line:
             return
         r.rpush(log_key, line)
-        # 최근 2000줄 정도만 유지 (원하는 크기로 조절)
-        r.ltrim(log_key, -2000, -1)
+        # 최근 20000줄 정도만 유지 (원하는 크기로 조절)
+        r.ltrim(log_key, -20000, -1)
 
     def set_meta(**kwargs):
         if not r:

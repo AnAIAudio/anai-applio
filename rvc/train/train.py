@@ -581,28 +581,59 @@ def run(
             pitchf.to(device),
             sid.to(device),
         )
+    try:
+        for epoch in range(epoch_str, total_epoch + 1):
+            local_done = train_and_evaluate(
+                rank,
+                epoch,
+                config,
+                [net_g, net_d],
+                [optim_g, optim_d],
+                [train_loader, None],
+                [writer_eval],
+                cache,
+                custom_save_every_weights,
+                custom_total_epoch,
+                device,
+                device_id,
+                reference,
+                fn_mel_loss,
+                scaler,
+            )
 
-    for epoch in range(epoch_str, total_epoch + 1):
-        train_and_evaluate(
-            rank,
-            epoch,
-            config,
-            [net_g, net_d],
-            [optim_g, optim_d],
-            [train_loader, None],
-            [writer_eval],
-            cache,
-            custom_save_every_weights,
-            custom_total_epoch,
-            device,
-            device_id,
-            reference,
-            fn_mel_loss,
-            scaler,
-        )
+            # rank0의 종료 판단을 모든 rank로 공유
+            if device.type == "cuda" and n_gpus > 1:
+                done_tensor = torch.tensor(
+                    1 if (rank == 0 and local_done) else 0,
+                    dtype=torch.int32,
+                    device=f"cuda:{device_id}",
+                )
+                dist.broadcast(done_tensor, src=0)
+                should_stop = bool(done_tensor.item())
+            else:
+                should_stop = bool(local_done)
 
-        scheduler_g.step()
-        scheduler_d.step()
+            scheduler_g.step()
+            scheduler_d.step()
+
+            if should_stop:
+                break
+
+    except Exception as e:
+        # 어떤 rank에서든 예외가 나면 로그를 남기고, 아래 finally에서 process group 정리
+        print(f"[rank{rank}] Training crashed: {e}")
+        import traceback
+
+        traceback.print_exc()
+        raise
+    finally:
+        # writer 정리
+        try:
+            if rank == 0 and writer_eval is not None:
+                writer_eval.flush()
+                writer_eval.close()
+        except Exception:
+            pass
 
 
 def train_and_evaluate(
@@ -1084,10 +1115,12 @@ def train_and_evaluate(
             with open(pid_file_path, "w") as pid_file:
                 pid_data.pop("process_pids", None)
                 json.dump(pid_data, pid_file, indent=4)
-            os._exit(2333333)
+            # os._exit(2333333)
 
         with torch.no_grad():
             torch.cuda.empty_cache()
+
+    return done
 
 
 def check_overtraining(smoothed_loss_history, threshold, epsilon=0.004):
