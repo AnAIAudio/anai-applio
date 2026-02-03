@@ -64,7 +64,6 @@ services:
     image: 339712720989.dkr.ecr.ap-northeast-1.amazonaws.com/dev/anai-applio:latest
     environment:
       - RUN_ENV=development
-      - NVIDIA_VISIBLE_DEVICES=all
       - RABBIT_URL=amqp://anai:ydVyM3KDkJ@rabbitmq:5672/
       - CELERY_RESULT_BACKEND=redis://redis:6379/1
       - JOB_INDEX_REDIS_URL=redis://redis:6379/2
@@ -77,7 +76,7 @@ services:
         tmpfs:
           size: 34359738368
     deploy:
-      replicas: 2
+      replicas: 4
       placement:
         constraints:
           - node.labels.gpu == true
