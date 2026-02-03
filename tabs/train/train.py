@@ -824,7 +824,7 @@ def train_tab():
             batch_size = gr.Slider(
                 1,
                 64,
-                4,
+                8,
                 step=1,
                 label=i18n("Batch Size"),
                 info=i18n(
@@ -835,7 +835,7 @@ def train_tab():
             save_every_epoch = gr.Slider(
                 1,
                 100,
-                10,
+                100,
                 step=1,
                 label=i18n("Save Every Epoch"),
                 info=i18n("Determine at how many epochs the model will saved at."),
@@ -844,7 +844,7 @@ def train_tab():
             total_epoch = gr.Slider(
                 1,
                 10000,
-                200,
+                1000,
                 step=1,
                 label=i18n("Total Epoch"),
                 info=i18n(
@@ -868,7 +868,7 @@ def train_tab():
                         info=i18n(
                             "This setting enables you to save the weights of the model at the conclusion of each epoch."
                         ),
-                        value=True,
+                        value=False,
                         interactive=True,
                     )
                     pretrained = gr.Checkbox(
@@ -885,7 +885,7 @@ def train_tab():
                         info=i18n(
                             "Enable this setting only if you are training a new model from scratch or restarting the training. Deletes all previously generated weights and tensorboard logs."
                         ),
-                        value=False,
+                        value=True,
                         interactive=True,
                     )
                     cache_dataset_in_gpu = gr.Checkbox(
@@ -893,7 +893,7 @@ def train_tab():
                         info=i18n(
                             "Cache the dataset in GPU memory to speed up the training process."
                         ),
-                        value=False,
+                        value=True,
                         interactive=True,
                     )
                     checkpointing = gr.Checkbox(
