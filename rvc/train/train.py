@@ -68,6 +68,11 @@ g_lr_coeff = 1.0
 d_step_per_g_step = 1
 multiscale_mel_loss = False
 bf16_adamw = False
+disc_version = "v2"
+
+if vocoder == "RefineGAN":
+    disc_version = "v3"
+    multiscale_mel_loss = True
 
 current_dir = os.getcwd()
 
@@ -163,7 +168,7 @@ def main():
 
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = str(randint(20000, 55555))
-    # Check samplerate
+    # Check sample rate
     wavs = glob.glob(
         os.path.join(os.path.join(experiment_dir, "sliced_audios"), "*.wav")
     )
@@ -424,7 +429,9 @@ def run(
     )
 
     net_d = MultiPeriodDiscriminator(
-        config.model.use_spectral_norm, checkpointing=checkpointing
+        config.model.use_spectral_norm,
+        checkpointing=checkpointing,
+        version=disc_version,
     )
 
     if torch.cuda.is_available():
@@ -473,12 +480,13 @@ def run(
         print("Using Float16 for training.")
 
     # Load checkpoint if available
+    scaler_dict = {}
     try:
         print("Starting training...")
-        _, _, _, epoch_str = load_checkpoint(
+        _, _, _, epoch_str, scaler_dict = load_checkpoint(
             latest_checkpoint_path(experiment_dir, "D_*.pth"), net_d, optim_d
         )
-        _, _, _, epoch_str = load_checkpoint(
+        _, _, _, epoch_str, _ = load_checkpoint(
             latest_checkpoint_path(experiment_dir, "G_*.pth"), net_g, optim_g
         )
         epoch_str += 1
@@ -536,6 +544,8 @@ def run(
 
     use_scaler = device.type == "cuda" and train_dtype == torch.float16
     scaler = torch.amp.GradScaler(enabled=use_scaler)
+    if len(scaler_dict) > 0:
+        scaler.load_state_dict(scaler_dict)
 
     cache = []
     # collect the reference audio for tensorboard evaluation
@@ -1007,6 +1017,7 @@ def train_and_evaluate(
                 config.train.learning_rate,
                 epoch,
                 os.path.join(experiment_dir, "G_" + checkpoint_suffix),
+                scaler,
             )
             save_checkpoint(
                 net_d,
@@ -1014,6 +1025,7 @@ def train_and_evaluate(
                 config.train.learning_rate,
                 epoch,
                 os.path.join(experiment_dir, "D_" + checkpoint_suffix),
+                scaler,
             )
             if custom_save_every_weights:
                 model_add.append(
