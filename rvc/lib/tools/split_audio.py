@@ -2,7 +2,7 @@ import numpy as np
 import librosa
 
 
-def process_audio(audio, sr=16000, silence_thresh=-60, min_silence_len=3000):
+def process_audio(audio, sr=16000, silence_thresh=-60, min_silence_len=250):
     """
     Splits an audio signal into segments using a fixed frame size and hop size.
 
