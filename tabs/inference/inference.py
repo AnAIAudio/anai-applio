@@ -52,6 +52,16 @@ sup_audioext = {
     "ac3",
 }
 
+names = [
+    os.path.join(root, file)
+    for root, _, files in os.walk(model_root_relative, topdown=False)
+    for file in files
+    if (
+        file.endswith((".pth", ".onnx"))
+        and not (file.startswith("G_") or file.startswith("D_"))
+    )
+]
+
 
 def read_text(path: str) -> str:
     with open(path, encoding="utf-8") as f:
@@ -136,6 +146,8 @@ def get_files(type="model"):
                     best[real] = (score, prev_order, full)
             order += 1
 
+    return [t[2] for t in sorted(best.values(), key=lambda x: x[1])]
+
 
 # read_text(os.path.join(root, f"{os.path.splitext(model_file)[0]}.txt")
 titles = [
@@ -162,6 +174,17 @@ custom_embedders = [
     for dirpath, dirnames, _ in os.walk(custom_embedder_root_relative)
     for dirname in dirnames
 ]
+
+
+def get_indexes():
+    indexes_list = [
+        os.path.join(dirpath, filename)
+        for dirpath, _, filenames in os.walk(model_root_relative)
+        for filename in filenames
+        if filename.endswith(".index") and "trained" not in filename
+    ]
+
+    return indexes_list if indexes_list else ""
 
 
 def update_sliders(preset):
