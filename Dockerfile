@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y \
     tk \
     ffmpeg \
     tini \
+    portaudio19-dev \
     && apt clean && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml uv.lock ./
