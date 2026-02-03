@@ -36,11 +36,12 @@ services:
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
       - RABBITMQ_DEFAULT_VHOST=/
-    ports:
-      - "15672:15672" # 관리 UI (http://localhost:15672)
-      - "5672:5672"   # AMQP
+    #    ports:
+    #      - "15672:15672" # 관리 UI (http://localhost:15672)
+    #      - "5672:5672"   # AMQP
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+      - ./configs/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
 
   redis:
     image: redis:7.4.7-alpine

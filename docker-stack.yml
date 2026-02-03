@@ -33,6 +33,10 @@ services:
       - app-network
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+    configs:
+      - source: rabbitmq_conf
+        target: /etc/rabbitmq/rabbitmq.conf
+        mode: 0444
     deploy:
       replicas: 1
       placement:
@@ -143,3 +147,7 @@ secrets:
     external: true
   aws_config:
     external: true
+
+configs:
+  rabbitmq_conf:
+    file: ./configs/rabbitmq.conf
