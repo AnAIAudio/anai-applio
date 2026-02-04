@@ -471,8 +471,18 @@ def run(
 
     # Wrap models with DDP for multi-gpu processing
     if n_gpus > 1 and device.type == "cuda":
-        net_g = DDP(net_g, device_ids=[device_id])
-        net_d = DDP(net_d, device_ids=[device_id])
+        net_g = DDP(
+            net_g,
+            device_ids=[device_id],
+            gradient_as_bucket_view=False,
+            broadcast_buffers=False,
+        )
+        net_d = DDP(
+            net_d,
+            device_ids=[device_id],
+            gradient_as_bucket_view=False,
+            broadcast_buffers=False,
+        )
 
     if rank == 0 and train_dtype == torch.bfloat16:
         print("Using BFloat16 for training.")

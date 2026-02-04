@@ -11,5 +11,5 @@
   },
   "version": "3.4.0",
   "model_author": "None",
-  "precision": "fp16"
+  "precision": "fp32"
 }
