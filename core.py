@@ -516,6 +516,8 @@ def run_train_script(
 ):
     import time
     import re
+    import datetime
+    from pathlib import Path
     import redis
     from utils.redis_util import JOB_INDEX_REDIS_URL
 
@@ -533,6 +535,15 @@ def run_train_script(
 
     enq = int(time.time())
 
+    # 로그 파일
+    # Path(logs_path) / "jobs" / model_name
+    model_log_dir = Path(logs_path) / "jobs" / model_name
+    model_log_dir.mkdir(parents=True, exist_ok=True)
+    kst = datetime.timezone(datetime.timedelta(hours=9))
+    started_ts = datetime.datetime.now(tz=kst).strftime("%Y%m%d_%H%M%S")
+    log_file_path = model_log_dir / f"{started_ts}_{task_id}.log"
+    log_fp = open(log_file_path, "a", encoding="utf-8", buffering=1)
+
     if r:
         # cleanup=True면 기존 로그/메타를 제거하고 새로 시작
         if cleanup:
@@ -543,19 +554,29 @@ def run_train_script(
             mapping={
                 "enqueued_at": enq,
                 "model_name": model_name,
+                "log_file": str(log_file_path),
             },
         )
         r.zadd(ACTIVE_JOBS_ZSET_KEY, {task_id: enq})
 
     def push_log(line: str):
+        try:
+            log_fp.write(line if line.endswith("\n") else line + "\n")
+        except Exception:
+            pass
+
+        try:
+            print(line.rstrip("\n"), flush=True)
+        except Exception:
+            pass
+
         if not r:
             return
-        # 너무 길면 잘라 저장(선택)
-        line = line.rstrip("\n")
-        if not line:
+        s = line.rstrip("\n")
+        if not s:
             return
-        r.rpush(log_key, line)
-        # 최근 20000줄 정도만 유지 (원하는 크기로 조절)
+        r.rpush(log_key, s)
+        # 최근 20000줄
         r.ltrim(log_key, -20000, -1)
 
     def set_meta(**kwargs):
@@ -674,6 +695,11 @@ def run_train_script(
     finally:
         if r:
             r.zrem(ACTIVE_JOBS_ZSET_KEY, task_id)
+
+        try:
+            log_fp.close()
+        except Exception:
+            pass
     # subprocess.run(command, check=True)
     # run_index_script(model_name, index_algorithm)
     # return f"Model {model_name} trained successfully."
