@@ -386,6 +386,7 @@ def train_tab():
             queue_refresh = gr.Button(i18n("Refresh now"))
 
             queue_delete = gr.Button(i18n("Delete selected"), variant="stop")
+            queue_stop = gr.Button(i18n("Stop selected"), variant="stop")
 
         queue_summary = gr.Textbox(
             label=i18n("Summary"),
@@ -395,6 +396,12 @@ def train_tab():
 
         selected_task_id = gr.Textbox(
             label=i18n("Selected task_id"),
+            value="",
+            interactive=False,
+        )
+
+        selected_model_name = gr.Textbox(
+            label=i18n("Selected model_name"),
             value="",
             interactive=False,
         )
@@ -425,13 +432,32 @@ def train_tab():
         )
 
         # 테이블 행 클릭 시: 첫 번째 컬럼(task_id)을 selected_task_id에 세팅
-        def _on_queue_select(evt: gr.SelectData):
-            return str(evt.value or "")
+        def _on_queue_select(evt: gr.SelectData, table):
+            try:
+                row_i, _col_i = evt.index  # (row, col)
+            except Exception:
+                return "", ""
+
+            if not table or row_i is None:
+                return "", ""
+
+            try:
+                task_id = str(table[row_i][0] or "")
+            except Exception:
+                task_id = ""
+
+            try:
+                in_model_name = str(table[row_i][4] or "")
+            except Exception:
+                in_model_name = ""
+
+            return task_id, in_model_name
+            # return str(evt.value or "")
 
         queue_table.select(
             fn=_on_queue_select,
-            inputs=[],
-            outputs=[selected_task_id],
+            inputs=[queue_table],
+            outputs=[selected_task_id, selected_model_name],
         )
 
         # Delete 버튼: Redis에서 job log/meta 삭제 + active zset 제거 후 테이블 갱신
@@ -449,6 +475,26 @@ def train_tab():
             fn=delete_selected_task,
             inputs=[selected_task_id, queue_limit],
             outputs=[selected_task_id, queue_summary, queue_table],
+        )
+
+        def stop_selected_model(in_model_name: str, limit: int):
+            if not in_model_name:
+                gr.Warning(
+                    "model_name이 선택되지 않았습니다. 테이블에서 행을 먼저 클릭하세요."
+                )
+                summary, rows = _queue_refresh(limit)
+                return summary, rows
+
+            stop_train(in_model_name)
+            gr.Info(f"Stop requested: model_name={in_model_name}")
+
+            summary, rows = _queue_refresh(limit)
+            return summary, rows
+
+        queue_stop.click(
+            fn=stop_selected_model,
+            inputs=[selected_model_name, queue_limit],
+            outputs=[queue_summary, queue_table],
         )
 
         queue_timer = gr.Timer(value=30.0)

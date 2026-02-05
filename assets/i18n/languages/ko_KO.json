@@ -341,5 +341,9 @@
   "Select and delete train logs": "학습 로그 선택 삭제",
   "Clean state": "정리 상태",
   "Delete selected items": "선택 항목 삭제",
-  "The timbre models that AnAI has:": "AnAI가 가지고 있는 음색 모델 목록:"
+  "Delete selected": "선택 항목 삭제",
+  "The timbre models that AnAI has:": "AnAI가 가지고 있는 음색 모델 목록:",
+  "Selected model_name": "선택된 모델 이름",
+  "Stop selected": "선택된 모델 중지",
+  "Selected task_id": "선택된 작업 ID"
 }
