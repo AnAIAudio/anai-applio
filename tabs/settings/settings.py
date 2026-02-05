@@ -20,23 +20,23 @@ from tabs.settings.sections.filter import filter_tab, get_filter_trigger
 
 
 def settings_tab(filter_state_trigger=None):
-    if filter_state_trigger is None:
-        filter_state_trigger = get_filter_trigger()
+    # if filter_state_trigger is None:
+    #     filter_state_trigger = get_filter_trigger()
 
     with gr.TabItem(label=i18n("General")):
-        filter_component = filter_tab()
-
-        filter_component.change(
-            fn=lambda checked: gr.update(value=str(checked)),
-            inputs=[filter_component],
-            outputs=[filter_state_trigger],
-            show_progress=False,
-        )
-        presence_tab()
-        theme_tab()
-        version_tab()
-        lang_tab()
+        # filter_component = filter_tab()
+        #
+        # filter_component.change(
+        #     fn=lambda checked: gr.update(value=str(checked)),
+        #     inputs=[filter_component],
+        #     outputs=[filter_state_trigger],
+        #     show_progress=False,
+        # )
+        # presence_tab()
+        # theme_tab()
+        # version_tab()
+        # lang_tab()
         restart_tab()
-    with gr.TabItem(label=i18n("Training")):
-        model_author_tab()
-        precision_tab()
+    # with gr.TabItem(label=i18n("Training")):
+    #     model_author_tab()
+    #     precision_tab()

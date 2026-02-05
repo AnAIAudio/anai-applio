@@ -150,8 +150,8 @@ with gr.Blocks(
     # with gr.Tab(i18n("Extra")):
     #     extra_tab()
 
-    # with gr.Tab(i18n("Settings")):
-    #     settings_tab()
+    with gr.Tab(i18n("Settings")):
+        settings_tab()
 
     with gr.Tab(i18n("Preprocessing")):
         preprocessing_tab()
