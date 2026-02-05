@@ -2,5 +2,5 @@ services:
   applio:
     environment:
       - RUN_ENV=production
-      - CUDA_LAUNCH_BLOCKING=1
-      - TORCH_SHOW_CPP_STACKTRACES=1
+#      - CUDA_LAUNCH_BLOCKING=1
+#      - TORCH_SHOW_CPP_STACKTRACES=1
