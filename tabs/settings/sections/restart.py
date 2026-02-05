@@ -34,12 +34,47 @@ def stop_infer():
 
 
 def restart_applio():
-    if os.name != "nt":
-        os.system("clear")
-    else:
-        os.system("cls")
-    python = sys.executable
-    os.execl(python, python, *sys.argv)
+    restart_applio_via_swarm()
+    # if os.name != "nt":
+    #     os.system("clear")
+    # else:
+    #     os.system("cls")
+    # python = sys.executable
+    # os.execl(python, python, *sys.argv)
+
+
+def restart_applio_via_swarm(model_name: str | None = None):
+    """
+    Swarm에서의 '재시작' = 프로세스 종료 -> restart_policy에 의해 task 재기동
+    """
+    import os
+    import signal
+    import threading
+    import time
+
+    # 1) 먼저 학습/추론 subprocess 정리 (여기서 예외가 나도 종료는 진행)
+    try:
+        if model_name:
+            stop_train(model_name)
+    except Exception:
+        pass
+
+    try:
+        stop_infer()
+    except Exception:
+        pass
+
+    def _shutdown():
+        try:
+            os.kill(os.getpid(), signal.SIGTERM)
+        except Exception:
+            pass
+
+        time.sleep(2)
+        os._exit(1)  # Swarm restart_policy: on-failure에서 재기동
+
+    threading.Thread(target=_shutdown, daemon=True).start()
+    return "Restart requested"
 
 
 from assets.i18n.i18n import I18nAuto
