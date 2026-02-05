@@ -30,12 +30,8 @@ def register_job(task_id: str, model_name: str, enqueued_at: int | None = None):
 
 def delete_job(task_id: str) -> tuple[bool, str]:
     """
-    Queue Monitor에서 "삭제"를 눌렀을 때:
-    - job:{task_id}:log, job:{task_id}:meta 삭제
-    - jobs:active(ZSET)에서 task_id 제거
-
-    주의: 이건 "표시/저장된 메타/로그"를 지우는 것이고,
-         Celery에서 실행 중인 작업을 강제로 중단하진 않습니다.
+    job:{task_id}:log, job:{task_id}:meta 삭제
+    jobs:active(ZSET)에서 task_id 제거
     """
     import redis
 
