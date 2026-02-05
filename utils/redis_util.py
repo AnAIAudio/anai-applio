@@ -1,6 +1,5 @@
 import os
 
-# 활성 작업 인덱스(ZSET) 키: 전체 스캔 방지용
 ACTIVE_JOBS_ZSET_KEY = "jobs:active"
 JOB_INDEX_REDIS_URL = "JOB_INDEX_REDIS_URL"
 

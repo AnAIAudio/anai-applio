@@ -129,14 +129,14 @@ with gr.Blocks(
     with gr.Tab(i18n("Training")):
         train_tab()
 
-    with gr.Tab(i18n("TTS")):
-        tts_tab()
+    # with gr.Tab(i18n("TTS")):
+    #     tts_tab()
 
-    with gr.Tab(i18n("Voice Blender")):
-        voice_blender_tab()
+    # with gr.Tab(i18n("Voice Blender")):
+    #     voice_blender_tab()
 
-    with gr.Tab(i18n("Realtime")):
-        realtime_tab()
+    # with gr.Tab(i18n("Realtime")):
+    #     realtime_tab()
 
     # with gr.Tab(i18n("Plugins")):
     #     plugins_tab()
@@ -147,11 +147,11 @@ with gr.Blocks(
     # with gr.Tab(i18n("Report a Bug")):
     #     report_tab()
 
-    with gr.Tab(i18n("Extra")):
-        extra_tab()
+    # with gr.Tab(i18n("Extra")):
+    #     extra_tab()
 
-    with gr.Tab(i18n("Settings")):
-        settings_tab()
+    # with gr.Tab(i18n("Settings")):
+    #     settings_tab()
 
     with gr.Tab(i18n("Preprocessing")):
         preprocessing_tab()
