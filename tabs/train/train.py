@@ -433,25 +433,41 @@ def train_tab():
 
         # 테이블 행 클릭 시: 첫 번째 컬럼(task_id)을 selected_task_id에 세팅
         def _on_queue_select(evt: gr.SelectData, table):
+            import pandas as pd
+
+            if table is None:
+                return "", ""
+
+            row_i = None
+            idx = getattr(evt, "index", None)
+            if isinstance(idx, (tuple, list)) and len(idx) >= 1:
+                row_i = idx[0]
+            elif isinstance(idx, int):
+                row_i = idx
+
+            if row_i is None:
+                return "", ""
+
             try:
-                row_i, _col_i = evt.index  # (row, col)
+                row_i = int(row_i)
             except Exception:
                 return "", ""
 
-            if not table or row_i is None:
-                return "", ""
+            # table이 DataFrame으로 오는 경우: truthy 체크 금지 -> empty 사용
+            if isinstance(table, pd.DataFrame):
+                if table.empty or row_i < 0 or row_i >= len(table.index):
+                    return "", ""
+                row = table.iloc[row_i].tolist()
+            else:
+                # list[list]로 오는 경우
+                if row_i < 0 or row_i >= len(table):
+                    return "", ""
+                row = table[row_i] or []
 
-            try:
-                task_id = str(table[row_i][0] or "")
-            except Exception:
-                task_id = ""
-
-            try:
-                in_model_name = str(table[row_i][4] or "")
-            except Exception:
-                in_model_name = ""
-
-            return task_id, in_model_name
+            # 헤더 순서: task_id(0), ..., model_name(4)
+            task_id = str(row[0] or "") if len(row) > 0 else ""
+            model_name = str(row[4] or "") if len(row) > 4 else ""
+            return task_id, model_name
             # return str(evt.value or "")
 
         queue_table.select(
