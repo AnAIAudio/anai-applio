@@ -652,9 +652,24 @@ def run_train_script(
             universal_newlines=True,
         )
 
+        stop_requested = False
+        overtraining_line = None
+
         assert proc.stdout is not None
         for line in proc.stdout:
             push_log(line)
+
+            if "Overtraining detected" in line:
+                stop_requested = True
+                overtraining_line = line.rstrip("\n")
+                push_log(
+                    "[celery] overtraining message detected -> terminating training subprocess..."
+                )
+                try:
+                    proc.terminate()
+                except Exception:
+                    pass
+                break
 
             m = epoch_re.search(line)
             if m and total_epoch > 0:
@@ -673,7 +688,40 @@ def run_train_script(
                         },
                     )
 
+        # 2) 종료 대기: 안 끝나면 kill로 강제 종료
+        if proc.poll() is None:
+            try:
+                proc.wait(timeout=30)
+            except subprocess.TimeoutExpired:
+                push_log(
+                    "[celery] WARNING: training subprocess did not exit after terminate(); killing..."
+                )
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+                proc.wait(timeout=30)
+
         rc = proc.wait()
+
+        if stop_requested:
+            set_meta(
+                status="STOPPED",
+                reason="OVERTRAINING_DETECTED",
+                finished_at=int(time.time()),
+            )
+            self.update_state(
+                state="SUCCESS",
+                meta={
+                    "progress": last_progress,
+                    "phase": "STOPPED",
+                    "reason": "OVERTRAINING_DETECTED",
+                    "overtraining_line": overtraining_line or "",
+                },
+            )
+            push_log("[celery] training stopped due to overtraining detection.")
+            return "Training stopped due to overtraining detection."
+
         if rc != 0:
             raise subprocess.CalledProcessError(rc, command)
 
