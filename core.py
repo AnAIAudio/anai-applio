@@ -646,6 +646,7 @@ def run_train_script(
     last_progress = 0
 
     push_log(f"[celery] task_id={task_id} starting training: {' '.join(command)}")
+    proc: subprocess.Popen | None = None
     try:
         proc = subprocess.Popen(
             command,
@@ -654,10 +655,10 @@ def run_train_script(
             text=True,
             bufsize=1,
             universal_newlines=True,
+            start_new_session=True,
         )
 
         stop_requested = False
-        overtraining_line = None
 
         assert proc.stdout is not None
         for line in proc.stdout:
@@ -665,7 +666,6 @@ def run_train_script(
 
             if "Overtraining detected" in line:
                 stop_requested = True
-                overtraining_line = line.rstrip("\n")
                 push_log(
                     "[celery] overtraining message detected -> terminating training subprocess..."
                 )
@@ -692,10 +692,10 @@ def run_train_script(
                         },
                     )
 
-        # 2) 종료 대기: 안 끝나면 kill로 강제 종료
+        # 안 끝나면 kill로 강제 종료
         if proc.poll() is None:
             try:
-                proc.wait(timeout=21600)
+                proc.wait(timeout=30)
             except subprocess.TimeoutExpired:
                 push_log(
                     "[celery] WARNING: training subprocess did not exit after terminate(); killing..."
@@ -734,6 +734,16 @@ def run_train_script(
     finally:
         if r:
             r.zrem(ACTIVE_JOBS_ZSET_KEY, task_id)
+
+        try:
+            if proc is not None and proc.poll() is None:
+                proc.terminate()
+                try:
+                    proc.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+        except Exception:
+            pass
 
         try:
             log_fp.close()
