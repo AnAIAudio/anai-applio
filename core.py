@@ -21,6 +21,10 @@ from rvc.lib.tools.model_download import model_download_pipeline
 
 python = sys.executable
 
+from assets.i18n.i18n import I18nAuto
+
+i18n = I18nAuto()
+
 
 # Get TTS Voices -> https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/voices/list?trustedclienttoken=6A5AA1D4EAFF4E9FB37E23D68491D6F4
 @lru_cache(maxsize=1)  # Cache only one result since the file is static
@@ -691,7 +695,7 @@ def run_train_script(
         # 2) 종료 대기: 안 끝나면 kill로 강제 종료
         if proc.poll() is None:
             try:
-                proc.wait(timeout=30)
+                proc.wait(timeout=21600)
             except subprocess.TimeoutExpired:
                 push_log(
                     "[celery] WARNING: training subprocess did not exit after terminate(); killing..."
@@ -702,30 +706,17 @@ def run_train_script(
                     pass
                 proc.wait(timeout=30)
 
-        rc = proc.wait()
+        rc = proc.returncode
 
         if stop_requested:
-            set_meta(
-                status="STOPPED",
-                reason="OVERTRAINING_DETECTED",
-                finished_at=int(time.time()),
+            push_log(
+                f"[celery] {i18n('training stopped due to overtraining detection. building index anyway')}..."
             )
-            self.update_state(
-                state="SUCCESS",
-                meta={
-                    "progress": last_progress,
-                    "phase": "STOPPED",
-                    "reason": "OVERTRAINING_DETECTED",
-                    "overtraining_line": overtraining_line or "",
-                },
-            )
-            push_log("[celery] training stopped due to overtraining detection.")
-            return "Training stopped due to overtraining detection."
 
         if rc != 0:
             raise subprocess.CalledProcessError(rc, command)
 
-        push_log("[celery] training finished. building index...")
+        push_log(f"[celery] {i18n('training finished. building index')}...")
         set_meta(status="INDEXING")
         self.update_state(
             state="PROGRESS", meta={"progress": last_progress, "phase": "INDEXING"}

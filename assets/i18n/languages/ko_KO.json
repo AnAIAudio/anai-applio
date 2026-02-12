@@ -341,5 +341,7 @@
   "Select and delete train logs": "학습 로그 선택 삭제",
   "Clean state": "정리 상태",
   "Delete selected items": "선택 항목 삭제",
-  "The timbre models that AnAI has:": "AnAI가 가지고 있는 음색 모델 목록:"
+  "The timbre models that AnAI has:": "AnAI가 가지고 있는 음색 모델 목록:",
+  "training stopped due to overtraining detection. building index anyway": "오버트레이닝 감지로 인한 학습 중지. 인덱스 빌드 계속",
+  "training finished. building index": "학습 완료. 인덱스 빌드 중"
 }
