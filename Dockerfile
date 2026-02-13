@@ -1,48 +1,44 @@
-FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim
-ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
+FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim AS builder
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_LINK_MODE=copy
 ENV UV_PYTHON_DOWNLOADS=0
 
-# Expose the required port
-EXPOSE 6969
-
-# Set up working directory
 WORKDIR /app
 
-# Install system dependencies, clean up cache to keep image size small
-RUN apt-get update && apt-get install -y \
-    git \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
-    tk \
-    ffmpeg \
-    tini \
+    git \
     portaudio19-dev \
-    && apt clean && rm -rf /var/lib/apt/lists/*
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml uv.lock ./
 
-# 의존성만 우선 설치
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project --no-dev
 
 COPY . .
 
-# 앱 설치
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
 
-# Define volumes for persistent storage
-VOLUME ["/app/logs/"]
+FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim AS runtime
+ENV UV_PYTHON_DOWNLOADS=0
+WORKDIR /app
 
-# Set environment variables if necessary
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    tk \
+    tini \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /app /app
+
+
+EXPOSE 6969
+VOLUME ["/app/logs/"]
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Run the app
-#ENTRYPOINT ["python3"]
-#CMD ["app.py"]
-
-#COPY docker/entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
-
 ENTRYPOINT ["tini", "-g", "--", "/app/entrypoint.sh"]
 CMD []
