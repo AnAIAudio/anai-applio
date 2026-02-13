@@ -523,13 +523,17 @@ def run_train_script(
     import datetime
     from pathlib import Path
     import redis
-    from utils.redis_util import JOB_INDEX_REDIS_URL
+    from utils.redis_util import (
+        JOB_INDEX_REDIS_URL,
+        get_redis_log_key,
+        get_redis_meta_key,
+    )
 
     task_id = self.request.id
     job_redis_url = os.getenv(JOB_INDEX_REDIS_URL)
 
-    log_key = f"job:{task_id}:log"
-    meta_key = f"job:{task_id}:meta"
+    log_key = get_redis_log_key(task_id=task_id)
+    meta_key = get_redis_meta_key(task_id=task_id)
 
     r = (
         redis.Redis.from_url(job_redis_url, decode_responses=True)
@@ -564,6 +568,10 @@ def run_train_script(
         r.zadd(ACTIVE_JOBS_ZSET_KEY, {task_id: enq})
 
     def push_log(line: str):
+        """
+        로그를 Redis에 추가하고 로그 파일에 기록
+        """
+
         try:
             log_fp.write(line if line.endswith("\n") else line + "\n")
         except Exception:
@@ -584,9 +592,13 @@ def run_train_script(
         r.ltrim(log_key, -20000, -1)
 
     def set_meta(**kwargs):
+        """
+        Redis에 메타 정보를 설정
+        """
+
         if not r:
             return
-        # 값은 문자열로 저장되는 게 안전
+
         mapping = {k: str(v) for k, v in kwargs.items() if v is not None}
         if mapping:
             r.hset(meta_key, mapping=mapping)
@@ -749,9 +761,6 @@ def run_train_script(
             log_fp.close()
         except Exception:
             pass
-    # subprocess.run(command, check=True)
-    # run_index_script(model_name, index_algorithm)
-    # return f"Model {model_name} trained successfully."
 
 
 # Index

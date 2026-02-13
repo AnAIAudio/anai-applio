@@ -5,6 +5,14 @@ ACTIVE_JOBS_ZSET_KEY = "jobs:active"
 JOB_INDEX_REDIS_URL = "JOB_INDEX_REDIS_URL"
 
 
+def get_redis_log_key(task_id: str):
+    return f"job:{task_id}:log"
+
+
+def get_redis_meta_key(task_id: str):
+    return f"job:{task_id}:meta"
+
+
 def register_job(task_id: str, model_name: str, enqueued_at: int | None = None):
     """
     Celery 워커가 집어가기 전(PENDING)에도 Queue Monitor에 보이도록
@@ -20,7 +28,7 @@ def register_job(task_id: str, model_name: str, enqueued_at: int | None = None):
     r = redis.Redis.from_url(job_redis_url, decode_responses=True)
     ts = int(time.time()) if enqueued_at is None else int(enqueued_at)
 
-    meta_key = f"job:{task_id}:meta"
+    meta_key = get_redis_meta_key(task_id=task_id)
     # 이미 존재하면 enqueued_at 같은 값은 덮어쓰지 않는 쪽이 안전(선택)
     r.hsetnx(meta_key, "enqueued_at", str(ts))
     r.hset(meta_key, mapping={"model_name": str(model_name), "status": "PENDING"})
@@ -48,8 +56,8 @@ def delete_job(task_id: str) -> tuple[bool, str]:
 
     r = redis.Redis.from_url(job_redis_url, decode_responses=True)
 
-    log_key = f"job:{task_id}:log"
-    meta_key = f"job:{task_id}:meta"
+    log_key = get_redis_log_key(task_id=task_id)
+    meta_key = get_redis_meta_key(task_id=task_id)
 
     try:
         r.delete(log_key, meta_key)
@@ -73,10 +81,10 @@ def poll(task_id: str):
     r = redis.Redis.from_url(job_redis_url, decode_responses=True)
 
     # 최근 200줄만 표시
-    logs = r.lrange(f"job:{task_id}:log", -200, -1)
+    logs = r.lrange(get_redis_log_key(task_id=task_id), -200, -1)
     log_text = "\n".join(logs)
 
-    meta = r.hgetall(f"job:{task_id}:meta")
+    meta = r.hgetall(get_redis_meta_key(task_id=task_id))
     total_epoch = int(meta.get("total_epoch", "0") or 0)
 
     # progress 우선순위: meta.progress -> 로그 epoch 기반 계산(fallback)
