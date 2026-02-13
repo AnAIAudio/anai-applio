@@ -495,7 +495,12 @@ from utils.redis_util import ACTIVE_JOBS_ZSET_KEY
 
 
 # Train
-@celery_app.task(bind=True, name="applio.run_train_script")
+@celery_app.task(
+    bind=True,
+    name="applio.run_train_script",
+    time_limit=36000,
+    soft_time_limit=21600,
+)
 def run_train_script(
     self,
     model_name: str,

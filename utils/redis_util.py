@@ -153,12 +153,13 @@ def get_queue_snapshot(limit: int = 30):
 
     rows = []
     for task_id, score in items:
-        meta = r.hgetall(f"job:{task_id}:meta") or {}
+        meta = r.hgetall(get_redis_meta_key(task_id=task_id)) or {}
         ar = AsyncResult(task_id, app=celery_app)
         state = ar.state
 
         # terminal이면 여기서도 청소(Queue Monitor만 켜도 정리됨)
-        if state in ("SUCCESS", "FAILURE", "REVOKED"):
+        # , "FAILURE", "REVOKED"
+        if state in ("SUCCESS"):
             try:
                 if r and task_id:
                     r.zrem(ACTIVE_JOBS_ZSET_KEY, task_id)
@@ -190,6 +191,11 @@ def get_queue_snapshot(limit: int = 30):
 
     pending = sum(1 for row in rows if len(row) > 1 and row[1] == "PENDING")
     started = sum(1 for row in rows if len(row) > 1 and row[1] == "STARTED")
-    summary = f"표시 {len(rows)}개 (PENDING={pending}, STARTED={started})"
+    failure = sum(1 for row in rows if len(row) > 1 and row[1] == "FAILURE")
+    revoked = sum(1 for row in rows if len(row) > 1 and row[1] == "REVOKED")
+    summary = (
+        f"표시 {len(rows)}개 "
+        f"(PENDING={pending}, STARTED={started}, FAILURE={failure}, REVOKED={revoked})"
+    )
 
     return rows, summary
