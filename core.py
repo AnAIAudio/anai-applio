@@ -741,7 +741,11 @@ def run_train_script(
 
         run_index_script(model_name, index_algorithm)
 
-        set_meta(progress=100, status="SUCCESS", finished_at=int(time.time()))
+        if stop_requested:
+            set_meta(progress=100, status="OVERTRAINING", finished_at=int(time.time()))
+        else:
+            set_meta(progress=100, status="SUCCESS", finished_at=int(time.time()))
+
         push_log("[celery] SUCCESS")
         return f"Model {model_name} trained successfully."
     except Exception as e:

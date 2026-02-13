@@ -193,9 +193,10 @@ def get_queue_snapshot(limit: int = 30):
     started = sum(1 for row in rows if len(row) > 1 and row[1] == "STARTED")
     failure = sum(1 for row in rows if len(row) > 1 and row[1] == "FAILURE")
     revoked = sum(1 for row in rows if len(row) > 1 and row[1] == "REVOKED")
+    overtraining = sum(1 for row in rows if len(row) > 1 and row[1] == "OVERTRAINING")
     summary = (
         f"표시 {len(rows)}개 "
-        f"(PENDING={pending}, STARTED={started}, FAILURE={failure}, REVOKED={revoked})"
+        f"(PENDING={pending}, STARTED={started}, FAILURE={failure}, REVOKED={revoked}, OVERTRAINING={overtraining})"
     )
 
     return rows, summary
