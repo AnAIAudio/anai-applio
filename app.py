@@ -118,25 +118,21 @@ with gr.Blocks(
             "A simple, high-quality voice conversion tool focused on ease of use and performance."
         )
     )
-    gr.Markdown(
-        i18n(
-            "[Support](https://discord.gg/urxFjYmYYh) — [GitHub](https://github.com/AnAIAudio/anai-applio)"
-        )
-    )
+
     with gr.Tab(i18n("Inference")):
         inference_tab()
 
     with gr.Tab(i18n("Training")):
         train_tab()
 
-    with gr.Tab(i18n("TTS")):
-        tts_tab()
-
-    with gr.Tab(i18n("Voice Blender")):
-        voice_blender_tab()
-
-    with gr.Tab(i18n("Realtime")):
-        realtime_tab()
+    # with gr.Tab(i18n("TTS")):
+    #     tts_tab()
+    #
+    # with gr.Tab(i18n("Voice Blender")):
+    #     voice_blender_tab()
+    #
+    # with gr.Tab(i18n("Realtime")):
+    #     realtime_tab()
 
     # with gr.Tab(i18n("Plugins")):
     #     plugins_tab()
@@ -147,8 +143,8 @@ with gr.Blocks(
     # with gr.Tab(i18n("Report a Bug")):
     #     report_tab()
 
-    with gr.Tab(i18n("Extra")):
-        extra_tab()
+    # with gr.Tab(i18n("Extra")):
+    #     extra_tab()
 
     with gr.Tab(i18n("Settings")):
         settings_tab()
@@ -156,11 +152,13 @@ with gr.Blocks(
     with gr.Tab(i18n("Preprocessing")):
         preprocessing_tab()
 
-    gr.Markdown("""
+    gr.Markdown(
+        """
     <div style="text-align: center; font-size: 0.9em; text-color: a3a3a3;">
     By using Applio, you agree to comply with ethical and legal standards, respect intellectual property and privacy rights, avoid harmful or prohibited uses, and accept full responsibility for any outcomes, while Applio disclaims liability and reserves the right to amend these terms.
     </div>
-    """)
+    """
+    )
 
 
 def launch_gradio(server_name: str, server_port: int) -> None:
