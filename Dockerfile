@@ -34,6 +34,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY --from=builder /app /app
 
+# 의존성만 builder에서 복사: 자주 안 바뀜
+COPY --from=builder /app/.venv /app/.venv
+
+# 소스는 컨텍스트에서 복사: 자주 바뀌지만 작게 만들 수 있음
+COPY . /app
 
 EXPOSE 6969
 VOLUME ["/app/logs/"]
