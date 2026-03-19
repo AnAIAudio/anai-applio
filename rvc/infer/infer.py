@@ -138,8 +138,8 @@ class VoiceConverter:
             output_path (str): Path to the output audio file.
             db_adjustment (float): Volume adjustment in dB.
         """
+        temp_path = output_path + ".tmp.wav"
         try:
-            temp_path = output_path + ".tmp.wav"
             subprocess.run(
                 [
                     "ffmpeg",
@@ -157,6 +157,7 @@ class VoiceConverter:
             os.replace(temp_path, output_path)
         except Exception as error:
             print(f"Failed to adjust volume: {error}")
+        finally:
             if os.path.exists(temp_path):
                 os.remove(temp_path)
 
