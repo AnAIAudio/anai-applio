@@ -1,10 +1,12 @@
 import os
+import re
 import sys
 import soxr
 import time
 import torch
 import librosa
 import logging
+import subprocess
 import traceback
 import numpy as np
 import soundfile as sf
@@ -91,6 +93,73 @@ class VoiceConverter:
         except Exception as error:
             print(f"An error occurred removing audio noise: {error}")
             return None
+
+    @staticmethod
+    def measure_mean_volume(file_path):
+        """
+        Measures the mean volume of an audio file using ffmpeg volumedetect.
+
+        Args:
+            file_path (str): Path to the audio file.
+
+        Returns:
+            float: Mean volume in dB, or None if measurement fails.
+        """
+        try:
+            result = subprocess.run(
+                [
+                    "ffmpeg",
+                    "-i",
+                    file_path,
+                    "-af",
+                    "volumedetect",
+                    "-f",
+                    "null",
+                    "-",
+                ],
+                capture_output=True,
+                text=True,
+            )
+            match = re.search(r"mean_volume:\s*([-\d.]+)\s*dB", result.stderr)
+            if match:
+                return float(match.group(1))
+            return None
+        except Exception as error:
+            print(f"Failed to measure volume: {error}")
+            return None
+
+    @staticmethod
+    def apply_volume_adjustment(input_path, output_path, db_adjustment):
+        """
+        Adjusts the volume of an audio file by the specified dB using ffmpeg.
+
+        Args:
+            input_path (str): Path to the input audio file.
+            output_path (str): Path to the output audio file.
+            db_adjustment (float): Volume adjustment in dB.
+        """
+        temp_path = output_path + ".tmp.wav"
+        try:
+            subprocess.run(
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-i",
+                    input_path,
+                    "-af",
+                    f"volume={db_adjustment}dB",
+                    temp_path,
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            os.replace(temp_path, output_path)
+        except Exception as error:
+            print(f"Failed to adjust volume: {error}")
+        finally:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
 
     @staticmethod
     def convert_audio_format(input_path, output_path, output_format):
@@ -211,6 +280,7 @@ class VoiceConverter:
         clean_strength: float = 0.5,
         export_format: str = "WAV",
         post_process: bool = False,
+        db_compensation: bool = False,
         resample_sr: int = 0,
         sid: int = 0,
         proposed_pitch: bool = False,
@@ -252,6 +322,9 @@ class VoiceConverter:
         try:
             start_time = time.time()
             print(f"Converting audio '{audio_input_path}'...")
+
+            if db_compensation:
+                input_mean_db = self.measure_mean_volume(audio_input_path)
 
             audio = load_audio_infer(
                 audio_input_path,
@@ -332,6 +405,29 @@ class VoiceConverter:
                 )
 
             sf.write(audio_output_path, audio_opt, self.tgt_sr, format="WAV")
+
+            if db_compensation and input_mean_db is not None:
+                output_mean_db = self.measure_mean_volume(audio_output_path)
+                print(
+                    f"[dB] Input: {input_mean_db:.1f} dB | "
+                    f"Inference output: {output_mean_db:.1f} dB"
+                )
+                if output_mean_db is not None:
+                    db_diff = input_mean_db - output_mean_db
+                    if abs(db_diff) > 0.1:
+                        self.apply_volume_adjustment(
+                            audio_output_path, audio_output_path, db_diff
+                        )
+                        compensated_db = self.measure_mean_volume(
+                            audio_output_path
+                        )
+                        print(
+                            f"[dB] Compensated: {compensated_db:.1f} dB "
+                            f"(adjusted {db_diff:+.1f} dB)"
+                        )
+                    else:
+                        print("[dB] No compensation needed (diff < 0.1 dB)")
+
             output_path_format = audio_output_path.replace(
                 ".wav", f".{export_format.lower()}"
             )
