@@ -70,5 +70,5 @@ volumes:
     driver: local
     driver_opts:
       type: nfs
-      o: addr=YOUR_NFS_SERVER,rw,nfsvers=4
+      o: "addr=211.233.64.121,rw,nolock,soft"
       device: ":/data/nfs/share/anai-applio"
