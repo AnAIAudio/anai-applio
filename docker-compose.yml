@@ -26,6 +26,11 @@ services:
         target: /app/rvc/models
         volume:
           subpath: rvc/models
+      - type: volume
+        source: nfs_applio_data
+        target: /app/assets/datasets
+        volume:
+          subpath: assets/datasets
     shm_size: "48gb"
     depends_on:
       - rabbitmq
