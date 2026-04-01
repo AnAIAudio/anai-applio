@@ -17,20 +17,17 @@ services:
     volumes:
       - "${HOME}/.aws:/root/.aws:ro"
       - type: volume
-        source: nfs_applio_data
+        source: nfs_applio_logs
         target: /app/logs
-        volume:
-          subpath: logs
       - type: volume
-        source: nfs_applio_data
+        source: nfs_applio_models
         target: /app/rvc/models
-        volume:
-          subpath: rvc/models
       - type: volume
-        source: nfs_applio_data
+        source: nfs_applio_datasets
         target: /app/assets/datasets
-        volume:
-          subpath: assets/datasets
+      - type: volume
+        source: nfs_applio_audios
+        target: /app/assets/audios
     shm_size: "48gb"
     depends_on:
       - rabbitmq
@@ -71,9 +68,31 @@ services:
 volumes:
   rabbitmq_data:
   redis_data:
-  nfs_applio_data:
+
+  nfs_applio_logs:
     driver: local
     driver_opts:
       type: nfs
       o: "addr=211.233.64.121,rw,nolock,soft"
-      device: ":/data/nfs/share/anai-applio"
+      device: ":/data/nfs/share/anai-applio-production/logs"
+
+  nfs_applio_models:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: "addr=211.233.64.121,rw,nolock,soft"
+      device: ":/data/nfs/share/anai-applio-production/rvc/models"
+
+  nfs_applio_datasets:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: "addr=211.233.64.121,rw,nolock,soft"
+      device: ":/data/nfs/share/anai-applio-production/assets/datasets"
+
+  nfs_applio_audios:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: "addr=211.233.64.121,rw,nolock,soft"
+      device: ":/data/nfs/share/anai-applio-production/assets/audios"
