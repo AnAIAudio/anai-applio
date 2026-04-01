@@ -16,8 +16,16 @@ services:
       - JOB_INDEX_REDIS_URL=redis://redis:6379/2
     volumes:
       - "${HOME}/.aws:/root/.aws:ro"
-      - "./logs:/app/logs"
-      - "./rvc/models:/app/rvc/models"
+      - type: volume
+        source: nfs_applio_data
+        target: /app/logs
+        volume:
+          subpath: logs
+      - type: volume
+        source: nfs_applio_data
+        target: /app/rvc/models
+        volume:
+          subpath: rvc/models
     shm_size: "48gb"
     depends_on:
       - rabbitmq
@@ -58,3 +66,9 @@ services:
 volumes:
   rabbitmq_data:
   redis_data:
+  nfs_applio_data:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=YOUR_NFS_SERVER,rw,nfsvers=4
+      device: ":/data/nfs/share/anai-applio"
