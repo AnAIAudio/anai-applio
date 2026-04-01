@@ -71,7 +71,16 @@ services:
     networks:
       - app-network
     volumes:
-      - nfs_applio_logs:/app/logs
+      - type: volume
+        source: nfs_applio_data
+        target: /app/logs
+        volume:
+          subpath: logs
+      - type: volume
+        source: nfs_applio_data
+        target: /app/rvc/models
+        volume:
+          subpath: rvc/models
       - type: tmpfs
         target: /dev/shm
         tmpfs:
@@ -129,12 +138,12 @@ networks:
     driver: overlay
 
 volumes:
-  nfs_applio_logs:
+  nfs_applio_data:
     driver: local
     driver_opts:
       type: nfs
       o: "addr=211.233.64.121,rw,nolock,soft"
-      device: ":/data/nfs/share/anai-applio/logs"
+      device: ":/data/nfs/share/anai-applio"
 
   rabbitmq_data:
     driver: local
