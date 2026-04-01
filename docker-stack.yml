@@ -72,23 +72,14 @@ services:
       - app-network
     volumes:
       - type: volume
-        source: nfs_applio_data
-        target: /app
-      #      - type: volume
-      #        source: nfs_applio_data
-      #        target: /app/logs
-      #        volume:
-      #          subpath: logs
-      #      - type: volume
-      #        source: nfs_applio_data
-      #        target: /app/rvc/models
-      #        volume:
-      #          subpath: rvc/models
-      #      - type: volume
-      #        source: nfs_applio_data
-      #        target: /app/assets/datasets
-      #        volume:
-      #          subpath: assets/datasets
+        source: nfs_applio_logs
+        target: /app/logs
+      - type: volume
+        source: nfs_applio_models
+        target: /app/rvc/models
+      - type: volume
+        source: nfs_applio_datasets
+        target: /app/assets/datasets
       - type: tmpfs
         target: /dev/shm
         tmpfs:
@@ -152,6 +143,27 @@ volumes:
       type: nfs
       o: "addr=211.233.64.121,rw,nolock,soft"
       device: ":/data/nfs/share/anai-applio"
+
+  nfs_applio_logs:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: "addr=211.233.64.121,rw,nolock,soft"
+      device: ":/data/nfs/share/anai-applio/logs"
+
+  nfs_applio_models:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: "addr=211.233.64.121,rw,nolock,soft"
+      device: ":/data/nfs/share/anai-applio/rvc/models"
+
+  nfs_applio_datasets:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: "addr=211.233.64.121,rw,nolock,soft"
+      device: ":/data/nfs/share/anai-applio/assets/datasets"
 
   rabbitmq_data:
     driver: local
