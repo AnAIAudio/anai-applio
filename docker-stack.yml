@@ -80,6 +80,9 @@ services:
       - type: volume
         source: nfs_applio_datasets
         target: /app/assets/datasets
+      - type: volume
+        source: nfs_applio_audios
+        target: /app/assets/audios
       - type: tmpfs
         target: /dev/shm
         tmpfs:
@@ -165,6 +168,12 @@ volumes:
       o: "addr=211.233.64.121,rw,nolock,soft"
       device: ":/data/nfs/share/anai-applio/assets/datasets"
 
+  nfs_applio_audios:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: "addr=211.233.64.121,rw,nolock,soft"
+      device: ":/data/nfs/share/anai-applio/assets/audios"
   rabbitmq_data:
     driver: local
 
