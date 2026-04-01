@@ -24,6 +24,8 @@ pip-wheel-metadata/
 
 # 로그 관련 내용은 NFS로 볼륨 마운팅, 빌드 때는 필요없음
 logs/
+assets/audios/
+assets/datasets/
 
 # 로그/OS/기타 잡파일
 *.log
