@@ -31,6 +31,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tk \
     tini \
     git \
+    libportaudio2 \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app /app
