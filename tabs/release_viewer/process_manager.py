@@ -64,11 +64,30 @@ def verify_git_repo() -> None:
     _run(["git", "rev-parse", "--git-dir"], cwd=PROJECT_ROOT)
 
 
+def _tag_exists_locally(tag: str) -> bool:
+    result = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", f"refs/tags/{tag}"],
+        cwd=str(PROJECT_ROOT),
+        capture_output=True,
+    )
+    return result.returncode == 0
+
+
+def fetch_tag(tag: str) -> None:
+    _run(
+        ["git", "fetch", "origin", "--no-tags", f"refs/tags/{tag}:refs/tags/{tag}"],
+        cwd=PROJECT_ROOT,
+        timeout=600,
+    )
+
+
 def ensure_worktree(tag: str) -> Path:
     verify_git_repo()
     WORKTREE_DIR.mkdir(parents=True, exist_ok=True)
     worktree_path = WORKTREE_DIR / tag
     if not (worktree_path.exists() and (worktree_path / ".git").exists()):
+        if not _tag_exists_locally(tag):
+            fetch_tag(tag)
         _run(
             ["git", "worktree", "add", str(worktree_path), tag],
             cwd=PROJECT_ROOT,
