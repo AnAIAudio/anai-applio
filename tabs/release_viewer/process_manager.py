@@ -41,7 +41,12 @@ class ReleaseError(RuntimeError):
     """Release Viewer 관련 복구 가능한 에러."""
 
 
-def _run(cmd: list[str], cwd: Path | None = None, timeout: int | None = None) -> str:
+def _run(
+    cmd: list[str],
+    cwd: Path | None = None,
+    timeout: int | None = None,
+    env: dict[str, str] | None = None,
+) -> str:
     try:
         result = subprocess.run(
             cmd,
@@ -49,6 +54,7 @@ def _run(cmd: list[str], cwd: Path | None = None, timeout: int | None = None) ->
             capture_output=True,
             text=True,
             timeout=timeout,
+            env=env,
         )
     except subprocess.TimeoutExpired as exc:
         raise ReleaseError(f"명령 시간 초과: {' '.join(cmd)}") from exc
@@ -166,10 +172,13 @@ def ensure_venv(worktree: Path) -> None:
         return
 
     python_version, extra_pip_args = _parse_install_script(worktree)
+    uv_env = os.environ.copy()
+    uv_env["UV_PYTHON_DOWNLOADS"] = "automatic"
     _run(
         ["uv", "venv", ".venv", "--python", python_version],
         cwd=worktree,
         timeout=600,
+        env=uv_env,
     )
     _run(
         [
