@@ -1,5 +1,4 @@
-# VCS
-.git
+# VCS — .git은 Release Viewer 탭이 git worktree를 사용하므로 이미지에 포함한다
 .gitmodules
 .gitignore
 .github

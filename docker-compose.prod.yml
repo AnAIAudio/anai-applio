@@ -2,3 +2,4 @@ services:
   applio:
     environment:
       - RUN_ENV=production
+      - RELEASE_VIEWER_BASE_URL=${RELEASE_VIEWER_BASE_URL:-http://applio.an-ai.ooo}
