@@ -144,6 +144,10 @@ def _parse_install_script(worktree: Path) -> tuple[str, list[str]]:
     """run-install.sh에서 Python 버전과 pip 플래그를 파싱한다.
 
     기본값: Python 3.12, 추가 플래그 없음.
+    Python 버전 우선순위:
+      1. `uv venv ... --python X.Y`
+      2. `find_python` 스타일: `for py in python3.X python3 python`
+      3. `python@X.Y` (homebrew 스타일)
     """
     script = worktree / "run-install.sh"
     python_version = "3.12"
@@ -154,9 +158,19 @@ def _parse_install_script(worktree: Path) -> tuple[str, list[str]]:
         content = script.read_text(errors="replace")
     except OSError:
         return python_version, extra_args
+
     m = re.search(r"uv\s+venv[^\n]*--python\s+(\d+\.\d+)", content)
     if m:
         python_version = m.group(1)
+    else:
+        m = re.search(r"for\s+py\s+in\s+python(\d+\.\d+)", content)
+        if m:
+            python_version = m.group(1)
+        else:
+            m = re.search(r"python@(\d+\.\d+)", content)
+            if m:
+                python_version = m.group(1)
+
     m = re.search(r"--extra-index-url\s+(\S+)", content)
     if m:
         extra_args += ["--extra-index-url", m.group(1)]
