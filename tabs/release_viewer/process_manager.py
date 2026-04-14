@@ -2,6 +2,7 @@
 
 import os
 import re
+import shutil
 import socket
 import subprocess
 import threading
@@ -135,6 +136,10 @@ def _venv_python(worktree: Path) -> Path:
     return worktree / ".venv" / "bin" / "python"
 
 
+def _venv_ready_marker(worktree: Path) -> Path:
+    return worktree / ".venv" / ".release_viewer_ready"
+
+
 def _parse_install_script(worktree: Path) -> tuple[str, list[str]]:
     """run-install.sh에서 Python 버전과 pip 플래그를 파싱한다.
 
@@ -162,14 +167,19 @@ def _parse_install_script(worktree: Path) -> tuple[str, list[str]]:
 
 
 def ensure_venv(worktree: Path) -> None:
-    if _venv_python(worktree).exists():
+    marker = _venv_ready_marker(worktree)
+    if marker.exists():
         return
+    venv_dir = worktree / ".venv"
+    if venv_dir.exists():
+        shutil.rmtree(venv_dir)
     has_uv_lock = (worktree / "uv.lock").exists()
     has_pyproject = (worktree / "pyproject.toml").exists()
     has_requirements = (worktree / "requirements.txt").exists()
 
     if has_uv_lock and has_pyproject:
         _run(["uv", "sync"], cwd=worktree, timeout=3600)
+        marker.touch()
         return
 
     python_version, extra_pip_args = _parse_install_script(worktree)
@@ -227,6 +237,7 @@ def ensure_venv(worktree: Path) -> None:
         raise ReleaseError(
             f"의존성 정의 파일을 찾을 수 없습니다 (uv.lock / pyproject.toml / requirements.txt): {worktree}"
         )
+    marker.touch()
 
 
 def _is_port_in_use(port: int) -> bool:
