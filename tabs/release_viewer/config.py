@@ -13,6 +13,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 WORKTREE_DIR = PROJECT_ROOT / ".release_worktrees"
 
 BASE_URL = os.getenv("RELEASE_VIEWER_BASE_URL", "http://localhost").rstrip("/")
+URL_MODE = os.getenv("RELEASE_VIEWER_URL_MODE", "port").lower()
+URL_PATH_PREFIX = os.getenv("RELEASE_VIEWER_URL_PATH_PREFIX", "/release").rstrip("/")
 _parsed = urlparse(BASE_URL)
 IFRAME_SCHEME = _parsed.scheme or "http"
 IFRAME_HOST = _parsed.hostname or "localhost"
@@ -41,5 +43,14 @@ def find_release(tag: str) -> dict | None:
     return None
 
 
+def gradio_root_path(release: dict) -> str | None:
+    """URL 모드가 path인 경우 자식 Applio가 사용해야 하는 GRADIO_ROOT_PATH."""
+    if URL_MODE != "path":
+        return None
+    return f"{URL_PATH_PREFIX}/{release['tag']}"
+
+
 def resolve_url(release: dict) -> str:
+    if URL_MODE == "path":
+        return f"{BASE_URL}{URL_PATH_PREFIX}/{release['tag']}/"
     return f"{BASE_URL}:{release['port']}/"

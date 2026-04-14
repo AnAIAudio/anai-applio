@@ -16,6 +16,7 @@ from tabs.release_viewer.config import (
     PROJECT_ROOT,
     READY_TIMEOUT_SEC,
     WORKTREE_DIR,
+    gradio_root_path,
 )
 
 LOG_DIR = WORKTREE_DIR / "_logs"
@@ -268,6 +269,9 @@ def start_process(release: dict) -> subprocess.Popen:
         env.pop("VIRTUAL_ENV", None)
         env.pop("PYTHONPATH", None)
         env["PATH"] = f"{worktree / '.venv' / 'bin'}:{env.get('PATH', '')}"
+        root_path = gradio_root_path(release)
+        if root_path:
+            env["GRADIO_ROOT_PATH"] = root_path
         LOG_DIR.mkdir(parents=True, exist_ok=True)
         log_path = LOG_DIR / f"{tag}.log"
         log_file = open(log_path, "ab", buffering=0)
