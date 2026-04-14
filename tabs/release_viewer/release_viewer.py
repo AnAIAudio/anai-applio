@@ -1,12 +1,20 @@
+from urllib.parse import urlparse
+
 import gradio as gr
 
 from assets.i18n.i18n import I18nAuto
-from tabs.release_viewer.config import RELEASES, find_release, resolve_url
+from tabs.release_viewer.config import (
+    ALLOWED_HOSTS,
+    RELEASES,
+    find_release,
+    resolve_url,
+)
 from tabs.release_viewer.process_manager import (
     ReleaseError,
     ensure_venv,
     ensure_worktree,
     get_status,
+    read_log_tail,
     start_process,
     stop_process,
     wait_until_ready,
@@ -23,7 +31,8 @@ EMPTY_IFRAME = (
 
 
 def _iframe_html(url: str) -> str:
-    if not url.startswith("http://localhost:"):
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https") or parsed.hostname not in ALLOWED_HOSTS:
         return (
             '<div style="padding:16px;border:1px solid #c00;color:#c00;">'
             f"허용되지 않은 URL입니다: {url}"
@@ -58,11 +67,12 @@ def _start_flow(label: str):
         yield f"🚀 Applio 기동 중… (포트 {port})", EMPTY_IFRAME
         start_process(release)
 
-        yield f"⌛ 기동 완료 대기 중… (최대 300초)", EMPTY_IFRAME
-        ready = wait_until_ready(port)
+        yield "⌛ 기동 완료 대기 중… (최대 300초)", EMPTY_IFRAME
+        ready, reason = wait_until_ready(tag, port)
         if not ready:
+            tail = read_log_tail(tag, lines=30)
             yield (
-                f"❌ 기동 대기 시간 초과 (포트 {port})",
+                f"❌ 기동 실패: {reason}\n\n```\n{tail}\n```",
                 EMPTY_IFRAME,
             )
             return

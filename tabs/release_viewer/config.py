@@ -1,15 +1,23 @@
 """Release Viewer 탭 설정.
 
 각 release 태그에 대해 git worktree로 체크아웃하고 고정 포트로
-태그 버전 Applio를 기동한다. iframe은 해당 localhost 포트를 가리킨다.
+태그 버전 Applio를 기동한다. iframe은 RELEASE_VIEWER_BASE_URL 환경변수의
+호스트(기본값 http://localhost)에 태그별 포트를 붙여 렌더한다.
 """
 
+import os
 from pathlib import Path
+from urllib.parse import urlparse
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 WORKTREE_DIR = PROJECT_ROOT / ".release_worktrees"
 
-IFRAME_HOST = "localhost"
+BASE_URL = os.getenv("RELEASE_VIEWER_BASE_URL", "http://localhost").rstrip("/")
+_parsed = urlparse(BASE_URL)
+IFRAME_SCHEME = _parsed.scheme or "http"
+IFRAME_HOST = _parsed.hostname or "localhost"
+ALLOWED_HOSTS: set[str] = {IFRAME_HOST, "localhost", "127.0.0.1"}
+
 READY_TIMEOUT_SEC = 300
 
 RELEASES: list[dict] = [
@@ -34,4 +42,4 @@ def find_release(tag: str) -> dict | None:
 
 
 def resolve_url(release: dict) -> str:
-    return f"http://{IFRAME_HOST}:{release['port']}/"
+    return f"{BASE_URL}:{release['port']}/"

@@ -16,6 +16,9 @@ services:
       - type: volume
         source: nfs_applio_audios
         target: /app/assets/audios
+      - type: volume
+        source: applio_release_worktrees
+        target: /app/.release_worktrees
 
 volumes:
   nfs_applio_logs:
