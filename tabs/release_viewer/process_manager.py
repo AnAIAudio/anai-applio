@@ -188,7 +188,7 @@ def ensure_venv(worktree: Path) -> None:
             "install",
             "--python",
             str(_venv_python(worktree)),
-            "setuptools<81",
+            "setuptools<77",
             "wheel",
         ],
         cwd=worktree,
