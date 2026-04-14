@@ -276,7 +276,14 @@ def start_process(release: dict) -> subprocess.Popen:
         log_path = LOG_DIR / f"{tag}.log"
         log_file = open(log_path, "ab", buffering=0)
         popen = subprocess.Popen(
-            [str(python_bin), "app.py", "--port", str(port)],
+            [
+                str(python_bin),
+                "app.py",
+                "--port",
+                str(port),
+                "--server-name",
+                "0.0.0.0",
+            ],
             cwd=str(worktree),
             env=env,
             stdout=log_file,
