@@ -63,6 +63,12 @@ from tabs.voice_blender.voice_blender import voice_blender_tab
 from tabs.plugins.plugins import plugins_tab
 from tabs.settings.settings import settings_tab
 from tabs.preprocess.preprocessing import preprocessing_tab
+from tabs.release_viewer.release_viewer import release_viewer_tab
+from tabs.release_viewer.process_manager import stop_all as release_viewer_stop_all
+
+import atexit
+
+atexit.register(release_viewer_stop_all)
 
 # Run prerequisites
 from core import run_prerequisites_script
@@ -126,6 +132,9 @@ with gr.Blocks(
 
     with gr.Tab(i18n("Preprocessing")):
         preprocessing_tab()
+
+    with gr.Tab(i18n("Release Viewer")):
+        release_viewer_tab()
 
     gr.Markdown(
         """

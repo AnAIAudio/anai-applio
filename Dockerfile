@@ -30,6 +30,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     tk \
     tini \
+    git \
+    libportaudio2 \
+    libatomic1 \
+    build-essential \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app /app
@@ -40,7 +44,7 @@ COPY --from=builder /app/.venv /app/.venv
 # 소스는 컨텍스트에서 복사: 자주 바뀌지만 작게 만들 수 있음
 COPY . /app
 
-EXPOSE 6969
+EXPOSE 6969 7001 7002 7003 7004 7005 7006 7007 7008 7009 7010
 VOLUME ["/app/logs/"]
 ENV PATH="/app/.venv/bin:$PATH"
 
