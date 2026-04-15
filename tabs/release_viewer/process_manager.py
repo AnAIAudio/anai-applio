@@ -5,6 +5,7 @@ import re
 import shutil
 import socket
 import subprocess
+import sys
 import threading
 import time
 import urllib.error
@@ -268,6 +269,34 @@ def _popen_alive(popen: subprocess.Popen | None) -> bool:
     return popen is not None and popen.poll() is None
 
 
+def _tee_output(tag: str, popen: subprocess.Popen, log_file) -> None:
+    """자식 stdout을 파일(원문)과 부모 stdout(프리픽스)에 동시에 기록."""
+    prefix = f"[release-viewer:{tag}] "
+    try:
+        assert popen.stdout is not None
+        for raw in iter(popen.stdout.readline, b""):
+            try:
+                log_file.write(raw)
+            except OSError:
+                pass
+            try:
+                line = raw.decode("utf-8", errors="replace").rstrip("\n")
+                sys.stdout.write(prefix + line + "\n")
+                sys.stdout.flush()
+            except Exception:
+                pass
+    finally:
+        try:
+            log_file.close()
+        except OSError:
+            pass
+        try:
+            if popen.stdout is not None:
+                popen.stdout.close()
+        except OSError:
+            pass
+
+
 def start_process(release: dict) -> subprocess.Popen:
     tag = release["tag"]
     port = release["port"]
@@ -311,10 +340,18 @@ def start_process(release: dict) -> subprocess.Popen:
             ],
             cwd=str(worktree),
             env=env,
-            stdout=log_file,
+            stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
+            bufsize=0,
             start_new_session=False,
         )
+        tee_thread = threading.Thread(
+            target=_tee_output,
+            args=(tag, popen, log_file),
+            name=f"release-viewer-tee-{tag}",
+            daemon=True,
+        )
+        tee_thread.start()
         _processes[tag] = popen
         return popen
 
