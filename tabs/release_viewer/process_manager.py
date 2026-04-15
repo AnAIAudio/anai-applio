@@ -326,6 +326,20 @@ def start_process(release: dict) -> subprocess.Popen:
         root_path = gradio_root_path(release)
         if root_path:
             env["GRADIO_ROOT_PATH"] = root_path
+        allowed_paths: list[str] = []
+        for raw in (env.get("GRADIO_ALLOWED_PATHS", "") or "").split(","):
+            item = raw.strip()
+            if item and item not in allowed_paths:
+                allowed_paths.append(item)
+        for _, target in _shared_links():
+            try:
+                resolved = str(Path(target).resolve())
+            except OSError:
+                continue
+            if resolved not in allowed_paths and Path(resolved).exists():
+                allowed_paths.append(resolved)
+        if allowed_paths:
+            env["GRADIO_ALLOWED_PATHS"] = ",".join(allowed_paths)
         LOG_DIR.mkdir(parents=True, exist_ok=True)
         log_path = LOG_DIR / f"{tag}.log"
         log_file = open(log_path, "ab", buffering=0)
