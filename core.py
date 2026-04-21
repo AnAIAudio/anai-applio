@@ -2429,32 +2429,7 @@ def main():
                 delay_feedback=args.delay_feedback,
                 delay_mix=args.delay_mix,
             )
-        elif args.mode == "tts":
-            run_tts_script(
-                tts_file=args.tts_file,
-                tts_text=args.tts_text,
-                tts_voice=args.tts_voice,
-                tts_rate=args.tts_rate,
-                pitch=args.pitch,
-                index_rate=args.index_rate,
-                volume_envelope=args.volume_envelope,
-                protect=args.protect,
-                f0_method=args.f0_method,
-                output_tts_path=args.output_tts_path,
-                output_rvc_path=args.output_rvc_path,
-                pth_path=args.pth_path,
-                index_path=args.index_path,
-                split_audio=args.split_audio,
-                f0_autotune=args.f0_autotune,
-                f0_autotune_strength=args.f0_autotune_strength,
-                proposed_pitch=args.proposed_pitch,
-                proposed_pitch_threshold=args.proposed_pitch_threshold,
-                clean_audio=args.clean_audio,
-                clean_strength=args.clean_strength,
-                export_format=args.export_format,
-                embedder_model=args.embedder_model,
-                embedder_model_custom=args.embedder_model_custom,
-            )
+
         elif args.mode == "preprocess":
             run_preprocess_script(
                 model_name=args.model_name,
@@ -2502,38 +2477,20 @@ def main():
                 vocoder=args.vocoder,
                 checkpointing=args.checkpointing,
             )
-        elif args.mode == "index":
-            run_index_script(
-                model_name=args.model_name,
-                index_algorithm=args.index_algorithm,
-            )
+
         elif args.mode == "model_information":
             run_model_information_script(
                 pth_path=args.pth_path,
             )
-        elif args.mode == "model_blender":
-            run_model_blender_script(
-                model_name=args.model_name,
-                pth_path_1=args.pth_path_1,
-                pth_path_2=args.pth_path_2,
-                ratio=args.ratio,
-            )
-        elif args.mode == "tensorboard":
-            run_tensorboard_script()
-        elif args.mode == "download":
-            run_download_script(
-                model_link=args.model_link,
-            )
+
+
         elif args.mode == "prerequisites":
             run_prerequisites_script(
                 pretraineds_hifigan=args.pretraineds_hifigan,
                 models=args.models,
                 exe=args.exe,
             )
-        elif args.mode == "audio_analyzer":
-            run_audio_analyzer_script(
-                input_path=args.input_path,
-            )
+
     except Exception as error:
         print(f"An error occurred during execution: {error}")
 

@@ -14,7 +14,6 @@ from tabs.inference.infer_utils.batch_control import (
     batch_pack_converted,
 )
 from tabs.settings.restart import stop_infer
-from tabs.settings.sections.filter import get_filter_trigger, load_config_filter
 
 i18n = I18nAuto()
 
@@ -619,76 +618,55 @@ def filter_dropdowns(filter_text):
 
 
 def update_filter_visibility(_):
-    en = load_config_filter()
-    if not en:
-        box = gr.update(visible=False, value="")
-        m_upd, i_upd = filter_dropdowns("")
-        return box, m_upd, i_upd
-    return gr.update(visible=True), gr.skip(), gr.skip()
+    box = gr.update(visible=False, value="")
+    m_upd, i_upd = filter_dropdowns("")
+    return box, m_upd, i_upd
 
 
 # Inference tab
 def inference_tab():
-    trigger = get_filter_trigger()
     with gr.Column():
         with gr.Row():
-            anai_model_list = gr.Dropdown(
-                label=i18n("The timbre models that AnAI has"),
-                info=i18n("Select the voice model to use for the conversion."),
-                choices=[],
-                interactive=True,
-            )
-            anai_models_state = gr.State(value=[])
-        with gr.Row():
-            get_model_button = gr.Button(i18n("Get Timbre model list"))
-            get_model_button.click(
-                get_timbre_models,
-                inputs=[],
-                outputs=[anai_model_list, anai_models_state],
-            )
-        with gr.Row():
-            model_title_text = gr.Dropdown(
-                label=i18n("Voice Model"),
-                info=i18n("Select the voice model to use for the conversion."),
-                choices=titles,
-                interactive=True,
-            )
-        with gr.Row():
-            model_file = gr.Dropdown(
-                label=i18n("Voice Model"),
-                info=i18n("Select the voice model to use for the conversion."),
-                choices=sorted(get_files("model"), key=extract_model_and_epoch),
-                value=default_weight,
-                interactive=True,
-                allow_custom_value=True,
-            )
-            filter_box_inf = gr.Textbox(
-                label=i18n("Filter"),
-                info=i18n("Path must contain:"),
-                placeholder=i18n("Type to filter..."),
-                interactive=True,
-                scale=0.1,
-                visible=load_config_filter(),
-            )
-            index_file = gr.Dropdown(
-                label=i18n("Index File"),
-                info=i18n("Select the index file to use for the conversion."),
-                choices=sorted(get_files("index")),
-                value=match_index(default_weight),
-                interactive=True,
-                allow_custom_value=True,
-            )
-        filter_box_inf.blur(
-            fn=filter_dropdowns,
-            inputs=[filter_box_inf],
-            outputs=[model_file, index_file],
-        )
-        trigger.change(
-            fn=update_filter_visibility,
-            inputs=[trigger],
-            outputs=[filter_box_inf, model_file, index_file],
-            show_progress=False,
-        )
+            with gr.Column():
+                anai_model_list = gr.Dropdown(
+                    label=i18n("The timbre models that AnAI has"),
+                    choices=[],
+                    interactive=True,
+                )
+                anai_models_state = gr.State(value=[])
+                get_model_button = gr.Button(i18n("Get Timbre model list"))
+                get_model_button.click(
+                    get_timbre_models,
+                    inputs=[],
+                    outputs=[anai_model_list, anai_models_state],
+                )
+            with gr.Column():
+
+                model_title_text = gr.Dropdown(
+                    label=i18n("Voice Model"),
+                    info=i18n("Select the voice model to use for the conversion."),
+                    choices=titles,
+                    interactive=True,
+                )
+
+                model_file = gr.Dropdown(
+                    label=i18n("Voice Model"),
+                    info=i18n("Select the voice model to use for the conversion."),
+                    choices=sorted(get_files("model"), key=extract_model_and_epoch),
+                    value=default_weight,
+                    interactive=True,
+                    allow_custom_value=True,
+                )
+
+                index_file = gr.Dropdown(
+                    label=i18n("Index File"),
+                    info=i18n("Select the index file to use for the conversion."),
+                    choices=sorted(get_files("index")),
+                    value=match_index(default_weight),
+                    interactive=True,
+                    allow_custom_value=True,
+                )
+
         anai_model_list.select(
             on_timbre_select,
             inputs=[anai_model_list, anai_models_state],
@@ -2212,10 +2190,6 @@ def inference_tab():
         fn=change_choices,
         inputs=[model_file],
         outputs=[model_file, index_file, audio, sid, sid_batch, model_title_text],
-    ).then(
-        fn=filter_dropdowns,
-        inputs=[filter_box_inf],
-        outputs=[model_file, index_file],
     )
     audio.change(
         fn=output_path_fn,

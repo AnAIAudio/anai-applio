@@ -39,7 +39,7 @@ i18n = I18nAuto()
 client_mode = "--client" in sys.argv
 
 with gr.Blocks(
-    theme=gr.themes.Glass(),
+    theme=gr.themes.Base(),
     title="AnAI-Applio",
 ) as Applio:
     gr.Markdown("# AnAI Applio")
