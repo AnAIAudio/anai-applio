@@ -3,7 +3,6 @@ import gradio as gr
 import regex as re
 import shutil
 import datetime
-import json
 import torch
 from core import run_infer_script, run_batch_infer_script
 from assets.i18n.i18n import I18nAuto
@@ -218,7 +217,6 @@ def change_choices(model):
     return (
         {"choices": sorted(models_list), "__type__": "update"},
         {"choices": sorted(indexes_list), "__type__": "update"},
-        {"choices": sorted(audio_paths), "__type__": "update"},
         {
             "choices": (
                 sorted(speakers)
@@ -630,25 +628,11 @@ def inference_tab():
     )
 
     # 단일 파일 추론
-    upload_audio = gr.Audio(
-        label=i18n("Upload Audio"),
-        type="filepath",
-        editable=False,
-    )
-    audio = gr.Dropdown(
-        label=i18n("Select Audio"),
-        info=i18n("Select the audio to convert."),
-        choices=sorted(audio_paths),
-        value=audio_paths[0] if audio_paths else "",
-        interactive=True,
-        allow_custom_value=True,
-    )
+    upload_audio = gr.Audio(label=i18n("Upload Audio"), type="filepath")
 
     with gr.Accordion(i18n("Advanced Settings"), open=False):
         with gr.Column():
-            clear_outputs_infer = gr.Button(
-                i18n("Clear Outputs (Deletes all audios in assets/audios)")
-            )
+
             output_path = gr.Textbox(
                 label=i18n("Output Path"),
                 placeholder=i18n("Enter output path"),
@@ -1185,24 +1169,20 @@ def inference_tab():
                     )
 
     # single
-
-    convert_button1 = gr.Button(i18n("Convert"))
-
     with gr.Row():
+        convert_button1 = gr.Button(i18n("Convert"))
         vc_output1 = gr.Textbox(
             label=i18n("Output Information"),
             info=i18n("The output information will be displayed here."),
         )
         vc_output2 = gr.Audio(label=i18n("Export Audio"))
 
-    # multi, batch
-    convert_button_batch = gr.Button(i18n("Convert"))
-    stop_button = gr.Button(i18n("Stop convert"), visible=False)
+        stop_button = gr.Button(i18n("Stop convert"), visible=False)
+        clear_outputs_infer = gr.Button(
+            i18n("Clear Outputs (Deletes all audios in assets/audios)")
+        )
+
     stop_button.click(fn=stop_infer, inputs=[], outputs=[])
-    download_converted_zip = gr.File(
-        label=i18n("Converted ZIP (download)"),
-        interactive=False,
-    )
 
     def toggle_visible(checkbox):
         return {"visible": checkbox, "__type__": "update"}
@@ -1213,7 +1193,7 @@ def inference_tab():
         return {"visible": False, "__type__": "update"}
 
     def disable_stop_convert_button():
-        return {"visible": True, "__type__": "update"}, {
+        return {
             "visible": False,
             "__type__": "update",
         }
@@ -1347,23 +1327,9 @@ def inference_tab():
     refresh_button.click(
         fn=change_choices,
         inputs=[model_file],
-        outputs=[model_file, index_file, audio, sid, model_title_text],
+        outputs=[model_file, index_file, sid, model_title_text],
     )
-    audio.change(
-        fn=output_path_fn,
-        inputs=[audio],
-        outputs=[output_path],
-    )
-    upload_audio.upload(
-        fn=save_to_wav2,
-        inputs=[upload_audio],
-        outputs=[audio, output_path],
-    )
-    upload_audio.stop_recording(
-        fn=save_to_wav,
-        inputs=[upload_audio],
-        outputs=[audio, output_path],
-    )
+
     clear_outputs_infer.click(
         fn=delete_outputs,
         inputs=[],
@@ -1390,9 +1356,6 @@ def inference_tab():
     def enforce_terms(*args):
         return run_infer_script(*args)
 
-    def enforce_terms_batch(*args):
-        return run_batch_infer_script(*args)
-
     convert_button1.click(
         fn=enforce_terms,
         inputs=[
@@ -1401,7 +1364,7 @@ def inference_tab():
             rms_mix_rate,
             protect,
             f0_method,
-            audio,
+            upload_audio,
             output_path,
             model_file,
             index_file,
@@ -1463,5 +1426,5 @@ def inference_tab():
     stop_button.click(
         fn=disable_stop_convert_button,
         inputs=[],
-        outputs=[convert_button_batch, stop_button],
+        outputs=[stop_button],
     )
