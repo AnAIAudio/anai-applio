@@ -634,38 +634,37 @@ def inference_tab():
                     interactive=True,
                 )
                 anai_models_state = gr.State(value=[])
-                get_model_button = gr.Button(i18n("Get Timbre model list"))
+                get_model_button = gr.Button(i18n("Get AnAI's Voice List"))
                 get_model_button.click(
                     get_timbre_models,
                     inputs=[],
                     outputs=[anai_model_list, anai_models_state],
                 )
             with gr.Column():
-
                 model_title_text = gr.Dropdown(
                     label=i18n("Voice Model"),
                     info=i18n("Select the voice model to use for the conversion."),
                     choices=titles,
                     interactive=True,
                 )
-
                 model_file = gr.Dropdown(
-                    label=i18n("Voice Model"),
-                    info=i18n("Select the voice model to use for the conversion."),
+                    label=i18n("Model's PTH File"),
+                    info=i18n("Please select the voice model's pth file."),
                     choices=sorted(get_files("model"), key=extract_model_and_epoch),
                     value=default_weight,
                     interactive=True,
                     allow_custom_value=True,
                 )
-
                 index_file = gr.Dropdown(
-                    label=i18n("Index File"),
-                    info=i18n("Select the index file to use for the conversion."),
+                    label=i18n("Model's Index File"),
+                    info=i18n("Please select the voice model's index file."),
                     choices=sorted(get_files("index")),
                     value=match_index(default_weight),
                     interactive=True,
                     allow_custom_value=True,
                 )
+                unload_button = gr.Button(i18n("Unload Voice"))
+                refresh_button = gr.Button(i18n("Refresh"))
 
         anai_model_list.select(
             on_timbre_select,
@@ -677,8 +676,6 @@ def inference_tab():
         )
 
         with gr.Row():
-            unload_button = gr.Button(i18n("Unload Voice"))
-            refresh_button = gr.Button(i18n("Refresh"))
 
             unload_button.click(
                 fn=lambda: (
