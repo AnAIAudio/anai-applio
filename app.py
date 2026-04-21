@@ -45,10 +45,10 @@ with gr.Blocks(
     gr.Markdown("# AnAI Applio")
 
     with gr.Tabs():
-        with gr.Tab(i18n("Inference")):
+        with gr.TabItem(i18n("Inference")):
             inference_tab()
 
-        with gr.Tab(i18n("Training")):
+        with gr.TabItem(i18n("Training")):
             train_tab()
 
         with gr.Tab(i18n("Settings")):

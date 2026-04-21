@@ -625,79 +625,78 @@ def update_filter_visibility(_):
 
 # Inference tab
 def inference_tab():
-    with gr.Column():
-        with gr.Row():
-            with gr.Column():
-                anai_model_list = gr.Dropdown(
-                    label=i18n("The timbre models that AnAI has"),
-                    choices=[],
-                    interactive=True,
-                )
-                anai_models_state = gr.State(value=[])
-                get_model_button = gr.Button(i18n("Get AnAI's Voice List"))
-                get_model_button.click(
-                    get_timbre_models,
-                    inputs=[],
-                    outputs=[anai_model_list, anai_models_state],
-                )
-            with gr.Column():
-                model_title_text = gr.Dropdown(
-                    label=i18n("Voice Model"),
-                    info=i18n("Select the voice model to use for the conversion."),
-                    choices=titles,
-                    interactive=True,
-                )
-                model_file = gr.Dropdown(
-                    label=i18n("Model's PTH File"),
-                    info=i18n("Please select the voice model's pth file."),
-                    choices=sorted(get_files("model"), key=extract_model_and_epoch),
-                    value=default_weight,
-                    interactive=True,
-                    allow_custom_value=True,
-                )
-                index_file = gr.Dropdown(
-                    label=i18n("Model's Index File"),
-                    info=i18n("Please select the voice model's index file."),
-                    choices=sorted(get_files("index")),
-                    value=match_index(default_weight),
-                    interactive=True,
-                    allow_custom_value=True,
-                )
-                unload_button = gr.Button(i18n("Unload Voice"))
-                refresh_button = gr.Button(i18n("Refresh"))
-
-        anai_model_list.select(
-            on_timbre_select,
-            inputs=[anai_model_list, anai_models_state],
-            outputs=[
-                model_file,
-                index_file,
-            ],
-        )
-
-        with gr.Row():
-
-            unload_button.click(
-                fn=lambda: (
-                    {"value": "", "__type__": "update"},
-                    {"value": "", "__type__": "update"},
-                ),
-                inputs=[],
-                outputs=[model_file, index_file],
+    # 모델 관련
+    with gr.Row():
+        with gr.Column():
+            anai_model_list = gr.Dropdown(
+                label=i18n("The timbre models that AnAI has"),
+                choices=[],
+                interactive=True,
             )
+            anai_models_state = gr.State(value=[])
+            get_model_button = gr.Button(i18n("Get AnAI's Voice List"))
+            get_model_button.click(
+                get_timbre_models,
+                inputs=[],
+                outputs=[anai_model_list, anai_models_state],
+            )
+        with gr.Column():
+            model_title_text = gr.Dropdown(
+                label=i18n("Voice Model"),
+                info=i18n("Select the voice model to use for the conversion."),
+                choices=titles,
+                interactive=True,
+            )
+            model_file = gr.Dropdown(
+                label=i18n("Model's PTH File"),
+                info=i18n("Please select the voice model's pth file."),
+                choices=sorted(get_files("model"), key=extract_model_and_epoch),
+                value=default_weight,
+                interactive=True,
+                allow_custom_value=True,
+            )
+            index_file = gr.Dropdown(
+                label=i18n("Model's Index File"),
+                info=i18n("Please select the voice model's index file."),
+                choices=sorted(get_files("index")),
+                value=match_index(default_weight),
+                interactive=True,
+                allow_custom_value=True,
+            )
+            unload_button = gr.Button(i18n("Unload Voice"))
+            refresh_button = gr.Button(i18n("Refresh"))
 
-        model_file.select(
-            fn=lambda model_file_value: match_index(model_file_value),
-            inputs=[model_file],
-            outputs=[index_file],
-        )
-        model_title_text.select(
-            fn=lambda model_file_value: match_index_using_guid(model_file_value),
-            inputs=[model_title_text],
-            outputs=[model_file, index_file],
-        )
+    # 모델 관련 Event
+    anai_model_list.select(
+        on_timbre_select,
+        inputs=[anai_model_list, anai_models_state],
+        outputs=[
+            model_file,
+            index_file,
+        ],
+    )
 
-    # Single inference tab
+    unload_button.click(
+        fn=lambda: (
+            {"value": "", "__type__": "update"},
+            {"value": "", "__type__": "update"},
+        ),
+        inputs=[],
+        outputs=[model_file, index_file],
+    )
+
+    model_file.select(
+        fn=lambda model_file_value: match_index(model_file_value),
+        inputs=[model_file],
+        outputs=[index_file],
+    )
+    model_title_text.select(
+        fn=lambda model_file_value: match_index_using_guid(model_file_value),
+        inputs=[model_title_text],
+        outputs=[model_file, index_file],
+    )
+
+    # 단일 파일 추론
     with gr.Tab(i18n("Single")):
         with gr.Column():
             upload_audio = gr.Audio(
@@ -1941,24 +1940,6 @@ def inference_tab():
             "visible": False,
             "__type__": "update",
         }
-
-    def toggle_visible_formant_shifting(checkbox):
-        if checkbox:
-            return (
-                gr.update(visible=True),
-                gr.update(visible=True),
-                gr.update(visible=True),
-                gr.update(visible=True),
-                gr.update(visible=True),
-            )
-        else:
-            return (
-                gr.update(visible=False),
-                gr.update(visible=False),
-                gr.update(visible=False),
-                gr.update(visible=False),
-                gr.update(visible=False),
-            )
 
     def update_visibility(checkbox, count):
         return [gr.update(visible=checkbox) for _ in range(count)]
