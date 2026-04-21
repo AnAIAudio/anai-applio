@@ -418,42 +418,42 @@ def train_tab():
 
         # ── 오른쪽: 학습 모니터 (기본 접힘) ─────────────────────
         with gr.Column():
-            with gr.Accordion(i18n("Training Monitor"), open=False):
-                with gr.Row():
-                    monitor_task_id = gr.Textbox(
-                        label=i18n("Task ID"),
-                        placeholder=i18n("훈련 시작 시 자동 입력"),
-                        interactive=True,
-                    )
-                    monitor_auto = gr.Checkbox(
-                        label=i18n("Auto refresh"),
-                        value=True,
-                        interactive=True,
-                    )
-                    monitor_refresh = gr.Button(i18n("Refresh now"))
+            gr.Markdown(f"### {i18n('Training Monitor')}")
+            with gr.Row():
+                monitor_task_id = gr.Textbox(
+                    label=i18n("Task ID"),
+                    placeholder=i18n("훈련 시작 시 자동 입력"),
+                    interactive=True,
+                )
+                monitor_auto = gr.Checkbox(
+                    label=i18n("Auto refresh"),
+                    value=True,
+                    interactive=True,
+                )
+                monitor_refresh = gr.Button(i18n("Refresh now"))
 
-                with gr.Row():
-                    monitor_status = gr.Textbox(
-                        label=i18n("Celery Status"),
-                        value="",
-                        interactive=False,
-                    )
-                    monitor_progress = gr.Slider(
-                        minimum=0,
-                        maximum=100,
-                        step=1,
-                        label=i18n("Progress (%)"),
-                        value=0,
-                        interactive=False,
-                    )
-
-                monitor_logs = gr.Textbox(
-                    label=i18n("Logs (recent)"),
+            with gr.Row():
+                monitor_status = gr.Textbox(
+                    label=i18n("Celery Status"),
                     value="",
-                    lines=18,
-                    max_lines=30,
                     interactive=False,
                 )
+                monitor_progress = gr.Slider(
+                    minimum=0,
+                    maximum=100,
+                    step=1,
+                    label=i18n("Progress (%)"),
+                    value=0,
+                    interactive=False,
+                )
+
+            monitor_logs = gr.Textbox(
+                label=i18n("Logs (recent)"),
+                value="",
+                lines=18,
+                max_lines=30,
+                interactive=False,
+            )
 
     # ── 이벤트: 큐 모니터 ───────────────────────────────────────
     def _queue_refresh(limit: int):
@@ -998,7 +998,17 @@ def train_tab():
             # 대기열 목록 새로고침
             summary, rows = _queue_refresh(limit)
 
-            return f"Training job queued. task_id={task_id}", task_id, summary, rows
+            return (
+                f"Training job queued. task_id={task_id}",
+                task_id,
+                summary,
+                rows,
+                {"visible": False, "__type__": "update"},
+                {
+                    "visible": True,
+                    "__type__": "update",
+                },
+            )
 
         terms_checkbox = gr.Checkbox(
             label=i18n("I agree to the terms of use"),
@@ -1018,38 +1028,6 @@ def train_tab():
 
         with gr.Row():
             train_button = gr.Button(i18n("Start Training"))
-            train_button.click(
-                fn=enforce_terms,
-                inputs=[
-                    terms_checkbox,
-                    queue_limit,
-                    model_name,
-                    save_every_epoch,
-                    save_only_latest,
-                    save_every_weights,
-                    total_epoch,
-                    sampling_rate,
-                    batch_size,
-                    gpu,
-                    overtraining_detector,
-                    overtraining_threshold,
-                    pretrained,
-                    cleanup,
-                    index_algorithm,
-                    cache_dataset_in_gpu,
-                    custom_pretrained,
-                    g_pretrained_path,
-                    d_pretrained_path,
-                    vocoder,
-                    checkpointing,
-                ],
-                outputs=[
-                    train_output_info,
-                    monitor_task_id,
-                    queue_summary,
-                    queue_table,
-                ],
-            )
 
             stop_train_button = gr.Button(
                 i18n("Stop Training"),
@@ -1164,12 +1142,6 @@ def train_tab():
                         "visible": pretrained,
                         "__type__": "update",
                     }
-
-            def enable_stop_train_button():
-                return {"visible": False, "__type__": "update"}, {
-                    "visible": True,
-                    "__type__": "update",
-                }
 
             def disable_stop_train_button():
                 return {"visible": True, "__type__": "update"}, {
@@ -1297,10 +1269,40 @@ def train_tab():
                 outputs=[overtraining_settings],
             )
             train_button.click(
-                fn=enable_stop_train_button,
-                inputs=[],
-                outputs=[train_button, stop_train_button],
+                fn=enforce_terms,
+                inputs=[
+                    terms_checkbox,
+                    queue_limit,
+                    model_name,
+                    save_every_epoch,
+                    save_only_latest,
+                    save_every_weights,
+                    total_epoch,
+                    sampling_rate,
+                    batch_size,
+                    gpu,
+                    overtraining_detector,
+                    overtraining_threshold,
+                    pretrained,
+                    cleanup,
+                    index_algorithm,
+                    cache_dataset_in_gpu,
+                    custom_pretrained,
+                    g_pretrained_path,
+                    d_pretrained_path,
+                    vocoder,
+                    checkpointing,
+                ],
+                outputs=[
+                    train_output_info,
+                    monitor_task_id,
+                    queue_summary,
+                    queue_table,
+                    train_button,
+                    stop_train_button,
+                ],
             )
+
             train_output_info.change(
                 fn=disable_stop_train_button,
                 inputs=[],
