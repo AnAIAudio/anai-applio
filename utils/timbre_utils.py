@@ -17,8 +17,8 @@ class ModelMatchLanguage(VoixLanguageModel):
 
 class TimbreModel(BaseModel):
     id: str = ""
-    size: float = 0
-    index_file_size: float = 0
+    size: Optional[float] = 0
+    index_file_size: Optional[float] = 0
     value: str = ""
     title: str = ""
     description: str = ""
@@ -93,7 +93,14 @@ async def fetch_models():
             resp = await client.get(timbre_api_url, params=params)
             resp.raise_for_status()
             data = resp.json()
-            data_wrapper = ApiWrappedResponse(**data)
+
+            inner_data = data.get("data", {})
+
+            if isinstance(inner_data, list):
+                inner_data = inner_data[0] if inner_data else {}
+
+            timbre_list_data = TimbreListData.model_validate(inner_data)
+            data_wrapper = ApiWrappedResponse(data=timbre_list_data)
             return data_wrapper.data
     except Exception:
         print(f"Error fetching models from {timbre_api_url}")
