@@ -11,7 +11,6 @@ i18n = I18nAuto()
 
 from tabs.settings.sections.presence import presence_tab
 from tabs.settings.sections.themes import theme_tab
-from tabs.settings.sections.version import version_tab
 from tabs.settings.sections.lang import lang_tab
 from tabs.settings.sections.restart import restart_tab
 from tabs.settings.sections.model_author import model_author_tab
