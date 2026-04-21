@@ -44,17 +44,18 @@ with gr.Blocks(
 ) as Applio:
     gr.Markdown("# AnAI Applio")
 
-    with gr.Tab(i18n("Inference")):
-        inference_tab()
+    with gr.Tabs():
+        with gr.Tab(i18n("Inference")):
+            inference_tab()
 
-    with gr.Tab(i18n("Training")):
-        train_tab()
+        with gr.Tab(i18n("Training")):
+            train_tab()
 
-    with gr.Tab(i18n("Settings")):
-        settings_tab()
+        with gr.Tab(i18n("Settings")):
+            settings_tab()
 
-    with gr.Tab(i18n("Preprocessing")):
-        preprocessing_tab()
+        with gr.Tab(i18n("Preprocessing")):
+            preprocessing_tab()
 
 
 def launch_gradio(server_name: str, server_port: int) -> None:
