@@ -386,7 +386,6 @@ def train_tab():
             queue_refresh = gr.Button(i18n("Refresh now"))
 
             queue_delete = gr.Button(i18n("Delete selected"), variant="stop")
-            queue_stop = gr.Button(i18n("Stop selected"), variant="stop")
 
         queue_summary = gr.Textbox(
             label=i18n("Summary"),
@@ -396,12 +395,6 @@ def train_tab():
 
         selected_task_id = gr.Textbox(
             label=i18n("Selected task_id"),
-            value="",
-            interactive=False,
-        )
-
-        selected_model_name = gr.Textbox(
-            label=i18n("Selected model_name"),
             value="",
             interactive=False,
         )
@@ -432,48 +425,13 @@ def train_tab():
         )
 
         # 테이블 행 클릭 시: 첫 번째 컬럼(task_id)을 selected_task_id에 세팅
-        def _on_queue_select(evt: gr.SelectData, table):
-            import pandas as pd
-
-            if table is None:
-                return "", ""
-
-            row_i = None
-            idx = getattr(evt, "index", None)
-            if isinstance(idx, (tuple, list)) and len(idx) >= 1:
-                row_i = idx[0]
-            elif isinstance(idx, int):
-                row_i = idx
-
-            if row_i is None:
-                return "", ""
-
-            try:
-                row_i = int(row_i)
-            except Exception:
-                return "", ""
-
-            # table이 DataFrame으로 오는 경우: truthy 체크 금지 -> empty 사용
-            if isinstance(table, pd.DataFrame):
-                if table.empty or row_i < 0 or row_i >= len(table.index):
-                    return "", ""
-                row = table.iloc[row_i].tolist()
-            else:
-                # list[list]로 오는 경우
-                if row_i < 0 or row_i >= len(table):
-                    return "", ""
-                row = table[row_i] or []
-
-            # 헤더 순서: task_id(0), ..., model_name(4)
-            task_id = str(row[0] or "") if len(row) > 0 else ""
-            model_name = str(row[4] or "") if len(row) > 4 else ""
-            return task_id, model_name
-            # return str(evt.value or "")
+        def _on_queue_select(evt: gr.SelectData):
+            return str(evt.value or "")
 
         queue_table.select(
             fn=_on_queue_select,
-            inputs=[queue_table],
-            outputs=[selected_task_id, selected_model_name],
+            inputs=[],
+            outputs=[selected_task_id],
         )
 
         # Delete 버튼: Redis에서 job log/meta 삭제 + active zset 제거 후 테이블 갱신
@@ -491,26 +449,6 @@ def train_tab():
             fn=delete_selected_task,
             inputs=[selected_task_id, queue_limit],
             outputs=[selected_task_id, queue_summary, queue_table],
-        )
-
-        def stop_selected_model(in_model_name: str, limit: int):
-            if not in_model_name:
-                gr.Warning(
-                    "model_name이 선택되지 않았습니다. 테이블에서 행을 먼저 클릭하세요."
-                )
-                summary, rows = _queue_refresh(limit)
-                return summary, rows
-
-            stop_train(in_model_name)
-            gr.Info(f"Stop requested: model_name={in_model_name}")
-
-            summary, rows = _queue_refresh(limit)
-            return summary, rows
-
-        queue_stop.click(
-            fn=stop_selected_model,
-            inputs=[selected_model_name, queue_limit],
-            outputs=[queue_summary, queue_table],
         )
 
         queue_timer = gr.Timer(value=30.0)
@@ -1040,7 +978,7 @@ def train_tab():
             if not terms_accepted:
                 message = "You must agree to the Terms of Use to proceed."
                 gr.Info(message)
-                return message
+                return message, ""
 
             async_result = run_train_script.delay(*args)
 
@@ -1052,8 +990,8 @@ def train_tab():
             except Exception:
                 pass
 
-            return f"Training job queued. task_id={async_result.id}"
-            # return run_train_script(*args)
+            task_id = async_result.id
+            return f"Training job queued. task_id={task_id}", task_id
 
         terms_checkbox = gr.Checkbox(
             label=i18n("I agree to the terms of use"),
@@ -1097,14 +1035,35 @@ def train_tab():
                     vocoder,
                     checkpointing,
                 ],
-                outputs=[train_output_info],
+                outputs=[train_output_info, monitor_task_id],
             )
 
-            stop_train_button = gr.Button(i18n("Stop Training"), visible=False)
+            stop_train_button = gr.Button(
+                i18n("Stop Training"),
+                visible=False,
+                variant="stop",
+            )
+
+            def handle_stop_train(task_id: str, model_name_val: str):
+                from utils.redis_util import revoke_job
+
+                # 1) Celery task revoke (task_id가 있을 때 우선)
+                if task_id and task_id.strip():
+                    ok, msg = revoke_job(task_id.strip())
+                    if ok:
+                        gr.Info(msg)
+                    else:
+                        gr.Warning(f"Celery revoke 실패: {msg}")
+
+                # 2) 로컬 PID kill (구버전 호환 / fallback)
+                stop_train(model_name_val)
+
+                return i18n("Training stop requested.")
+
             stop_train_button.click(
-                fn=stop_train,
-                inputs=[model_name],
-                outputs=[],
+                fn=handle_stop_train,
+                inputs=[monitor_task_id, model_name],
+                outputs=[train_output_info],
             )
 
             index_button = gr.Button(i18n("Generate Index"))

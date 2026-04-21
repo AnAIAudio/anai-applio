@@ -1,5 +1,6 @@
 import os
 
+# 활성 작업 인덱스(ZSET) 키: 전체 스캔 방지용
 ACTIVE_JOBS_ZSET_KEY = "jobs:active"
 JOB_INDEX_REDIS_URL = "JOB_INDEX_REDIS_URL"
 
@@ -35,10 +36,50 @@ def register_job(task_id: str, model_name: str, enqueued_at: int | None = None):
     return True
 
 
+def revoke_job(task_id: str) -> tuple[bool, str]:
+    """
+    실행 중이거나 대기 중인 Celery 작업을 강제 취소(revoke)한다.
+    - Celery에 REVOKE 시그널을 보내 워커가 작업을 중단하도록 함 (terminate=True → SIGTERM)
+    - Redis meta의 status를 REVOKED로 업데이트
+    - jobs:active(ZSET)에서 제거
+    """
+    import redis
+    from celery.result import AsyncResult
+    from utils.celery_task_util import celery_app
+
+    if not task_id:
+        return False, "task_id가 비어있습니다."
+
+    job_redis_url = os.getenv(JOB_INDEX_REDIS_URL)
+    if not job_redis_url:
+        return False, "JOB_INDEX_REDIS_URL 미설정"
+
+    r = redis.Redis.from_url(job_redis_url, decode_responses=True)
+
+    try:
+        # Celery에 revoke 전송 (terminate=True: 이미 실행 중인 워커 프로세스도 종료)
+        celery_app.control.revoke(task_id, terminate=True, signal="SIGTERM")
+
+        # Redis 메타 상태 업데이트
+        meta_key = get_redis_meta_key(task_id=task_id)
+        r.hset(meta_key, "status", "REVOKED")
+
+        # active zset 제거
+        r.zrem(ACTIVE_JOBS_ZSET_KEY, task_id)
+
+        return True, f"훈련 취소 완료: {task_id}"
+    except Exception as e:
+        return False, f"취소 실패: {e}"
+
+
 def delete_job(task_id: str) -> tuple[bool, str]:
     """
-    job:{task_id}:log, job:{task_id}:meta 삭제
-    jobs:active(ZSET)에서 task_id 제거
+    Queue Monitor에서 "삭제"를 눌렀을 때:
+    - job:{task_id}:log, job:{task_id}:meta 삭제
+    - jobs:active(ZSET)에서 task_id 제거
+
+    주의: 이건 "표시/저장된 메타/로그"를 지우는 것이고,
+         Celery에서 실행 중인 작업을 강제로 중단하진 않습니다.
     """
     import redis
 
