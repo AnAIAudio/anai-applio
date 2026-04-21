@@ -9,7 +9,7 @@ from assets.i18n.i18n import I18nAuto
 
 i18n = I18nAuto()
 
-from tabs.settings.sections.restart import restart_tab
+from tabs.settings.restart import restart_tab
 
 
 def settings_tab(filter_state_trigger=None):

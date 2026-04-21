@@ -13,7 +13,7 @@ from tabs.inference.infer_utils.batch_control import (
     batch_cleanup_temp,
     batch_pack_converted,
 )
-from tabs.settings.sections.restart import stop_infer
+from tabs.settings.restart import stop_infer
 from tabs.settings.sections.filter import get_filter_trigger, load_config_filter
 
 i18n = I18nAuto()

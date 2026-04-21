@@ -1,7 +1,7 @@
 import os
 import sys
 import gradio as gr
-from tabs.preprocess.audio_processing.cleanup_temp_dir import cleanup_temp_dir_tab
+from tabs.settings.cleanup_temp_dir import cleanup_temp_dir_tab
 from assets.i18n.i18n import I18nAuto
 
 i18n = I18nAuto()
