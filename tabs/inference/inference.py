@@ -262,14 +262,6 @@ def save_to_wav2(upload_audio):
     return target_path, output_path_fn(target_path)
 
 
-def delete_outputs():
-    gr.Info(f"Outputs cleared!")
-    for root, _, files in os.walk(audio_root_relative, topdown=False):
-        for name in files:
-            if name.endswith(tuple(sup_audioext)) and name.__contains__("_output"):
-                os.remove(os.path.join(root, name))
-
-
 def folders_same(
     a: str, b: str
 ) -> bool:  # Used to "pair" index and model folders based on path names
@@ -628,559 +620,561 @@ def inference_tab():
     )
 
     # 단일 파일 추론
-    upload_audio = gr.Audio(label=i18n("Upload Audio"), type="filepath")
+    with gr.Row():
+        upload_audio = gr.Audio(label=i18n("Upload Audio"), type="filepath")
 
-    with gr.Accordion(i18n("Advanced Settings"), open=False):
+    with gr.Row():
         with gr.Column():
+            with gr.Accordion(i18n("Advanced Settings"), open=False):
+                output_path = gr.Textbox(
+                    label=i18n("Output Path"),
+                    placeholder=i18n("Enter output path"),
+                    info=i18n(
+                        "The path where the output audio will be saved, by default in assets/audios/output.wav"
+                    ),
+                    value=(
+                        output_path_fn(audio_paths[0])
+                        if audio_paths
+                        else os.path.join(now_dir, "assets", "audios", "output.wav")
+                    ),
+                    interactive=True,
+                )
+                export_format = gr.Radio(
+                    label=i18n("Export Format"),
+                    info=i18n("Select the format to export the audio."),
+                    choices=["WAV", "MP3", "FLAC", "OGG", "M4A"],
+                    value="WAV",
+                    interactive=True,
+                )
+                sid = gr.Dropdown(
+                    label=i18n("Speaker ID"),
+                    info=i18n("Select the speaker ID to use for the conversion."),
+                    choices=get_speakers_id(model_file.value),
+                    value=0,
+                    interactive=True,
+                )
+                split_audio = gr.Checkbox(
+                    label=i18n("Split Audio"),
+                    info=i18n(
+                        "Split the audio into chunks for inference to obtain better results in some cases."
+                    ),
+                    visible=True,
+                    value=False,
+                    interactive=True,
+                )
+                autotune = gr.Checkbox(
+                    label=i18n("Autotune"),
+                    info=i18n(
+                        "Apply a soft autotune to your inferences, recommended for singing conversions."
+                    ),
+                    visible=True,
+                    value=False,
+                    interactive=True,
+                )
+                autotune_strength = gr.Slider(
+                    minimum=0,
+                    maximum=1,
+                    label=i18n("Autotune Strength"),
+                    info=i18n(
+                        "Set the autotune strength - the more you increase it the more it will snap to the chromatic grid."
+                    ),
+                    visible=False,
+                    value=1,
+                    interactive=True,
+                )
+                proposed_pitch = gr.Checkbox(
+                    label=i18n("Proposed Pitch"),
+                    info=i18n(
+                        "Adjust the input audio pitch to match the voice model range."
+                    ),
+                    visible=True,
+                    value=False,
+                    interactive=True,
+                )
+                proposed_pitch_threshold = gr.Slider(
+                    minimum=50.0,
+                    maximum=1200.0,
+                    label=i18n("Proposed Pitch Threshold"),
+                    info=i18n(
+                        "Male voice models typically use 155.0 and female voice models typically use 255.0."
+                    ),
+                    visible=False,
+                    value=155.0,
+                    interactive=True,
+                )
+                clean_audio = gr.Checkbox(
+                    label=i18n("Clean Audio"),
+                    info=i18n(
+                        "Clean your audio output using noise detection algorithms, recommended for speaking audios."
+                    ),
+                    visible=True,
+                    value=False,
+                    interactive=True,
+                )
+                clean_strength = gr.Slider(
+                    minimum=0,
+                    maximum=1,
+                    label=i18n("Clean Strength"),
+                    info=i18n(
+                        "Set the clean-up level to the audio you want, the more you increase it the more it will clean up, but it is possible that the audio will be more compressed."
+                    ),
+                    visible=False,
+                    value=0.5,
+                    interactive=True,
+                )
+                formant_shifting = gr.Checkbox(
+                    label=i18n("Formant Shifting"),
+                    info=i18n(
+                        "Enable formant shifting. Used for male to female and vice-versa convertions."
+                    ),
+                    value=False,
+                    visible=True,
+                    interactive=True,
+                )
+                post_process = gr.Checkbox(
+                    label=i18n("Post-Process"),
+                    info=i18n("Post-process the audio to apply effects to the output."),
+                    value=False,
+                    interactive=True,
+                )
+                db_compensation = gr.Checkbox(
+                    label=i18n("dB Compensation"),
+                    info=i18n(
+                        "Automatically adjust output volume to match the input audio level."
+                    ),
+                    value=False,
+                    interactive=True,
+                )
 
-            output_path = gr.Textbox(
-                label=i18n("Output Path"),
-                placeholder=i18n("Enter output path"),
-                info=i18n(
-                    "The path where the output audio will be saved, by default in assets/audios/output.wav"
-                ),
-                value=(
-                    output_path_fn(audio_paths[0])
-                    if audio_paths
-                    else os.path.join(now_dir, "assets", "audios", "output.wav")
-                ),
-                interactive=True,
-            )
-            export_format = gr.Radio(
-                label=i18n("Export Format"),
-                info=i18n("Select the format to export the audio."),
-                choices=["WAV", "MP3", "FLAC", "OGG", "M4A"],
-                value="WAV",
-                interactive=True,
-            )
-            sid = gr.Dropdown(
-                label=i18n("Speaker ID"),
-                info=i18n("Select the speaker ID to use for the conversion."),
-                choices=get_speakers_id(model_file.value),
-                value=0,
-                interactive=True,
-            )
-            split_audio = gr.Checkbox(
-                label=i18n("Split Audio"),
-                info=i18n(
-                    "Split the audio into chunks for inference to obtain better results in some cases."
-                ),
-                visible=True,
-                value=False,
-                interactive=True,
-            )
-            autotune = gr.Checkbox(
-                label=i18n("Autotune"),
-                info=i18n(
-                    "Apply a soft autotune to your inferences, recommended for singing conversions."
-                ),
-                visible=True,
-                value=False,
-                interactive=True,
-            )
-            autotune_strength = gr.Slider(
-                minimum=0,
-                maximum=1,
-                label=i18n("Autotune Strength"),
-                info=i18n(
-                    "Set the autotune strength - the more you increase it the more it will snap to the chromatic grid."
-                ),
-                visible=False,
-                value=1,
-                interactive=True,
-            )
-            proposed_pitch = gr.Checkbox(
-                label=i18n("Proposed Pitch"),
-                info=i18n(
-                    "Adjust the input audio pitch to match the voice model range."
-                ),
-                visible=True,
-                value=False,
-                interactive=True,
-            )
-            proposed_pitch_threshold = gr.Slider(
-                minimum=50.0,
-                maximum=1200.0,
-                label=i18n("Proposed Pitch Threshold"),
-                info=i18n(
-                    "Male voice models typically use 155.0 and female voice models typically use 255.0."
-                ),
-                visible=False,
-                value=155.0,
-                interactive=True,
-            )
-            clean_audio = gr.Checkbox(
-                label=i18n("Clean Audio"),
-                info=i18n(
-                    "Clean your audio output using noise detection algorithms, recommended for speaking audios."
-                ),
-                visible=True,
-                value=False,
-                interactive=True,
-            )
-            clean_strength = gr.Slider(
-                minimum=0,
-                maximum=1,
-                label=i18n("Clean Strength"),
-                info=i18n(
-                    "Set the clean-up level to the audio you want, the more you increase it the more it will clean up, but it is possible that the audio will be more compressed."
-                ),
-                visible=False,
-                value=0.5,
-                interactive=True,
-            )
-            formant_shifting = gr.Checkbox(
-                label=i18n("Formant Shifting"),
-                info=i18n(
-                    "Enable formant shifting. Used for male to female and vice-versa convertions."
-                ),
-                value=False,
-                visible=True,
-                interactive=True,
-            )
-            post_process = gr.Checkbox(
-                label=i18n("Post-Process"),
-                info=i18n("Post-process the audio to apply effects to the output."),
-                value=False,
-                interactive=True,
-            )
-            db_compensation = gr.Checkbox(
-                label=i18n("dB Compensation"),
-                info=i18n(
-                    "Automatically adjust output volume to match the input audio level."
-                ),
-                value=False,
-                interactive=True,
-            )
+                formant_qfrency = gr.Slider(
+                    value=1.0,
+                    info=i18n("Default value is 1.0"),
+                    label=i18n("Quefrency for formant shifting"),
+                    minimum=0.0,
+                    maximum=16.0,
+                    step=0.1,
+                    visible=False,
+                    interactive=True,
+                )
+                formant_timbre = gr.Slider(
+                    value=1.0,
+                    info=i18n("Default value is 1.0"),
+                    label=i18n("Timbre for formant shifting"),
+                    minimum=0.0,
+                    maximum=16.0,
+                    step=0.1,
+                    visible=False,
+                    interactive=True,
+                )
+                reverb = gr.Checkbox(
+                    label=i18n("Reverb"),
+                    info=i18n("Apply reverb to the audio."),
+                    value=False,
+                    interactive=True,
+                    visible=False,
+                )
+                reverb_room_size = gr.Slider(
+                    minimum=0,
+                    maximum=1,
+                    label=i18n("Reverb Room Size"),
+                    info=i18n("Set the room size of the reverb."),
+                    value=0.5,
+                    interactive=True,
+                    visible=False,
+                )
+                reverb_damping = gr.Slider(
+                    minimum=0,
+                    maximum=1,
+                    label=i18n("Reverb Damping"),
+                    info=i18n("Set the damping of the reverb."),
+                    value=0.5,
+                    interactive=True,
+                    visible=False,
+                )
+                reverb_wet_gain = gr.Slider(
+                    minimum=0,
+                    maximum=1,
+                    label=i18n("Reverb Wet Gain"),
+                    info=i18n("Set the wet gain of the reverb."),
+                    value=0.33,
+                    interactive=True,
+                    visible=False,
+                )
+                reverb_dry_gain = gr.Slider(
+                    minimum=0,
+                    maximum=1,
+                    label=i18n("Reverb Dry Gain"),
+                    info=i18n("Set the dry gain of the reverb."),
+                    value=0.4,
+                    interactive=True,
+                    visible=False,
+                )
+                reverb_width = gr.Slider(
+                    minimum=0,
+                    maximum=1,
+                    label=i18n("Reverb Width"),
+                    info=i18n("Set the width of the reverb."),
+                    value=1.0,
+                    interactive=True,
+                    visible=False,
+                )
+                reverb_freeze_mode = gr.Slider(
+                    minimum=0,
+                    maximum=1,
+                    label=i18n("Reverb Freeze Mode"),
+                    info=i18n("Set the freeze mode of the reverb."),
+                    value=0.0,
+                    interactive=True,
+                    visible=False,
+                )
+                pitch_shift = gr.Checkbox(
+                    label=i18n("Pitch Shift"),
+                    info=i18n("Apply pitch shift to the audio."),
+                    value=False,
+                    interactive=True,
+                    visible=False,
+                )
+                pitch_shift_semitones = gr.Slider(
+                    minimum=-12,
+                    maximum=12,
+                    label=i18n("Pitch Shift Semitones"),
+                    info=i18n("Set the pitch shift semitones."),
+                    value=0,
+                    interactive=True,
+                    visible=False,
+                )
+                limiter = gr.Checkbox(
+                    label=i18n("Limiter"),
+                    info=i18n("Apply limiter to the audio."),
+                    value=False,
+                    interactive=True,
+                    visible=False,
+                )
+                limiter_threshold = gr.Slider(
+                    minimum=-60,
+                    maximum=0,
+                    label=i18n("Limiter Threshold dB"),
+                    info=i18n("Set the limiter threshold dB."),
+                    value=-6,
+                    interactive=True,
+                    visible=False,
+                )
+                limiter_release_time = gr.Slider(
+                    minimum=0.01,
+                    maximum=1,
+                    label=i18n("Limiter Release Time"),
+                    info=i18n("Set the limiter release time."),
+                    value=0.05,
+                    interactive=True,
+                    visible=False,
+                )
+                gain = gr.Checkbox(
+                    label=i18n("Gain"),
+                    info=i18n("Apply gain to the audio."),
+                    value=False,
+                    interactive=True,
+                    visible=False,
+                )
+                gain_db = gr.Slider(
+                    minimum=-60,
+                    maximum=60,
+                    label=i18n("Gain dB"),
+                    info=i18n("Set the gain dB."),
+                    value=0,
+                    interactive=True,
+                    visible=False,
+                )
+                distortion = gr.Checkbox(
+                    label=i18n("Distortion"),
+                    info=i18n("Apply distortion to the audio."),
+                    value=False,
+                    interactive=True,
+                    visible=False,
+                )
+                distortion_gain = gr.Slider(
+                    minimum=-60,
+                    maximum=60,
+                    label=i18n("Distortion Gain"),
+                    info=i18n("Set the distortion gain."),
+                    value=25,
+                    interactive=True,
+                    visible=False,
+                )
+                chorus = gr.Checkbox(
+                    label=i18n("Chorus"),
+                    info=i18n("Apply chorus to the audio."),
+                    value=False,
+                    interactive=True,
+                    visible=False,
+                )
+                chorus_rate = gr.Slider(
+                    minimum=0,
+                    maximum=100,
+                    label=i18n("Chorus Rate Hz"),
+                    info=i18n("Set the chorus rate Hz."),
+                    value=1.0,
+                    interactive=True,
+                    visible=False,
+                )
+                chorus_depth = gr.Slider(
+                    minimum=0,
+                    maximum=1,
+                    label=i18n("Chorus Depth"),
+                    info=i18n("Set the chorus depth."),
+                    value=0.25,
+                    interactive=True,
+                    visible=False,
+                )
+                chorus_center_delay = gr.Slider(
+                    minimum=7,
+                    maximum=8,
+                    label=i18n("Chorus Center Delay ms"),
+                    info=i18n("Set the chorus center delay ms."),
+                    value=7,
+                    interactive=True,
+                    visible=False,
+                )
+                chorus_feedback = gr.Slider(
+                    minimum=0,
+                    maximum=1,
+                    label=i18n("Chorus Feedback"),
+                    info=i18n("Set the chorus feedback."),
+                    value=0.0,
+                    interactive=True,
+                    visible=False,
+                )
+                chorus_mix = gr.Slider(
+                    minimum=0,
+                    maximum=1,
+                    label=i18n("Chorus Mix"),
+                    info=i18n("Set the chorus mix."),
+                    value=0.5,
+                    interactive=True,
+                    visible=False,
+                )
+                bitcrush = gr.Checkbox(
+                    label=i18n("Bitcrush"),
+                    info=i18n("Apply bitcrush to the audio."),
+                    value=False,
+                    interactive=True,
+                    visible=False,
+                )
+                bitcrush_bit_depth = gr.Slider(
+                    minimum=1,
+                    maximum=32,
+                    label=i18n("Bitcrush Bit Depth"),
+                    info=i18n("Set the bitcrush bit depth."),
+                    value=8,
+                    interactive=True,
+                    visible=False,
+                )
+                clipping = gr.Checkbox(
+                    label=i18n("Clipping"),
+                    info=i18n("Apply clipping to the audio."),
+                    value=False,
+                    interactive=True,
+                    visible=False,
+                )
+                clipping_threshold = gr.Slider(
+                    minimum=-60,
+                    maximum=0,
+                    label=i18n("Clipping Threshold"),
+                    info=i18n("Set the clipping threshold."),
+                    value=-6,
+                    interactive=True,
+                    visible=False,
+                )
+                compressor = gr.Checkbox(
+                    label=i18n("Compressor"),
+                    info=i18n("Apply compressor to the audio."),
+                    value=False,
+                    interactive=True,
+                    visible=False,
+                )
+                compressor_threshold = gr.Slider(
+                    minimum=-60,
+                    maximum=0,
+                    label=i18n("Compressor Threshold dB"),
+                    info=i18n("Set the compressor threshold dB."),
+                    value=0,
+                    interactive=True,
+                    visible=False,
+                )
+                compressor_ratio = gr.Slider(
+                    minimum=1,
+                    maximum=20,
+                    label=i18n("Compressor Ratio"),
+                    info=i18n("Set the compressor ratio."),
+                    value=1,
+                    interactive=True,
+                    visible=False,
+                )
+                compressor_attack = gr.Slider(
+                    minimum=0.0,
+                    maximum=100,
+                    label=i18n("Compressor Attack ms"),
+                    info=i18n("Set the compressor attack ms."),
+                    value=1.0,
+                    interactive=True,
+                    visible=False,
+                )
+                compressor_release = gr.Slider(
+                    minimum=0.01,
+                    maximum=100,
+                    label=i18n("Compressor Release ms"),
+                    info=i18n("Set the compressor release ms."),
+                    value=100,
+                    interactive=True,
+                    visible=False,
+                )
+                delay = gr.Checkbox(
+                    label=i18n("Delay"),
+                    info=i18n("Apply delay to the audio."),
+                    value=False,
+                    interactive=True,
+                    visible=False,
+                )
+                delay_seconds = gr.Slider(
+                    minimum=0.0,
+                    maximum=5.0,
+                    label=i18n("Delay Seconds"),
+                    info=i18n("Set the delay seconds."),
+                    value=0.5,
+                    interactive=True,
+                    visible=False,
+                )
+                delay_feedback = gr.Slider(
+                    minimum=0.0,
+                    maximum=1.0,
+                    label=i18n("Delay Feedback"),
+                    info=i18n("Set the delay feedback."),
+                    value=0.0,
+                    interactive=True,
+                    visible=False,
+                )
+                delay_mix = gr.Slider(
+                    minimum=0.0,
+                    maximum=1.0,
+                    label=i18n("Delay Mix"),
+                    info=i18n("Set the delay mix."),
+                    value=0.5,
+                    interactive=True,
+                    visible=False,
+                )
 
-            formant_qfrency = gr.Slider(
-                value=1.0,
-                info=i18n("Default value is 1.0"),
-                label=i18n("Quefrency for formant shifting"),
-                minimum=0.0,
-                maximum=16.0,
-                step=0.1,
-                visible=False,
-                interactive=True,
-            )
-            formant_timbre = gr.Slider(
-                value=1.0,
-                info=i18n("Default value is 1.0"),
-                label=i18n("Timbre for formant shifting"),
-                minimum=0.0,
-                maximum=16.0,
-                step=0.1,
-                visible=False,
-                interactive=True,
-            )
-            reverb = gr.Checkbox(
-                label=i18n("Reverb"),
-                info=i18n("Apply reverb to the audio."),
-                value=False,
-                interactive=True,
-                visible=False,
-            )
-            reverb_room_size = gr.Slider(
-                minimum=0,
-                maximum=1,
-                label=i18n("Reverb Room Size"),
-                info=i18n("Set the room size of the reverb."),
-                value=0.5,
-                interactive=True,
-                visible=False,
-            )
-            reverb_damping = gr.Slider(
-                minimum=0,
-                maximum=1,
-                label=i18n("Reverb Damping"),
-                info=i18n("Set the damping of the reverb."),
-                value=0.5,
-                interactive=True,
-                visible=False,
-            )
-            reverb_wet_gain = gr.Slider(
-                minimum=0,
-                maximum=1,
-                label=i18n("Reverb Wet Gain"),
-                info=i18n("Set the wet gain of the reverb."),
-                value=0.33,
-                interactive=True,
-                visible=False,
-            )
-            reverb_dry_gain = gr.Slider(
-                minimum=0,
-                maximum=1,
-                label=i18n("Reverb Dry Gain"),
-                info=i18n("Set the dry gain of the reverb."),
-                value=0.4,
-                interactive=True,
-                visible=False,
-            )
-            reverb_width = gr.Slider(
-                minimum=0,
-                maximum=1,
-                label=i18n("Reverb Width"),
-                info=i18n("Set the width of the reverb."),
-                value=1.0,
-                interactive=True,
-                visible=False,
-            )
-            reverb_freeze_mode = gr.Slider(
-                minimum=0,
-                maximum=1,
-                label=i18n("Reverb Freeze Mode"),
-                info=i18n("Set the freeze mode of the reverb."),
-                value=0.0,
-                interactive=True,
-                visible=False,
-            )
-            pitch_shift = gr.Checkbox(
-                label=i18n("Pitch Shift"),
-                info=i18n("Apply pitch shift to the audio."),
-                value=False,
-                interactive=True,
-                visible=False,
-            )
-            pitch_shift_semitones = gr.Slider(
-                minimum=-12,
-                maximum=12,
-                label=i18n("Pitch Shift Semitones"),
-                info=i18n("Set the pitch shift semitones."),
-                value=0,
-                interactive=True,
-                visible=False,
-            )
-            limiter = gr.Checkbox(
-                label=i18n("Limiter"),
-                info=i18n("Apply limiter to the audio."),
-                value=False,
-                interactive=True,
-                visible=False,
-            )
-            limiter_threshold = gr.Slider(
-                minimum=-60,
-                maximum=0,
-                label=i18n("Limiter Threshold dB"),
-                info=i18n("Set the limiter threshold dB."),
-                value=-6,
-                interactive=True,
-                visible=False,
-            )
-            limiter_release_time = gr.Slider(
-                minimum=0.01,
-                maximum=1,
-                label=i18n("Limiter Release Time"),
-                info=i18n("Set the limiter release time."),
-                value=0.05,
-                interactive=True,
-                visible=False,
-            )
-            gain = gr.Checkbox(
-                label=i18n("Gain"),
-                info=i18n("Apply gain to the audio."),
-                value=False,
-                interactive=True,
-                visible=False,
-            )
-            gain_db = gr.Slider(
-                minimum=-60,
-                maximum=60,
-                label=i18n("Gain dB"),
-                info=i18n("Set the gain dB."),
-                value=0,
-                interactive=True,
-                visible=False,
-            )
-            distortion = gr.Checkbox(
-                label=i18n("Distortion"),
-                info=i18n("Apply distortion to the audio."),
-                value=False,
-                interactive=True,
-                visible=False,
-            )
-            distortion_gain = gr.Slider(
-                minimum=-60,
-                maximum=60,
-                label=i18n("Distortion Gain"),
-                info=i18n("Set the distortion gain."),
-                value=25,
-                interactive=True,
-                visible=False,
-            )
-            chorus = gr.Checkbox(
-                label=i18n("Chorus"),
-                info=i18n("Apply chorus to the audio."),
-                value=False,
-                interactive=True,
-                visible=False,
-            )
-            chorus_rate = gr.Slider(
-                minimum=0,
-                maximum=100,
-                label=i18n("Chorus Rate Hz"),
-                info=i18n("Set the chorus rate Hz."),
-                value=1.0,
-                interactive=True,
-                visible=False,
-            )
-            chorus_depth = gr.Slider(
-                minimum=0,
-                maximum=1,
-                label=i18n("Chorus Depth"),
-                info=i18n("Set the chorus depth."),
-                value=0.25,
-                interactive=True,
-                visible=False,
-            )
-            chorus_center_delay = gr.Slider(
-                minimum=7,
-                maximum=8,
-                label=i18n("Chorus Center Delay ms"),
-                info=i18n("Set the chorus center delay ms."),
-                value=7,
-                interactive=True,
-                visible=False,
-            )
-            chorus_feedback = gr.Slider(
-                minimum=0,
-                maximum=1,
-                label=i18n("Chorus Feedback"),
-                info=i18n("Set the chorus feedback."),
-                value=0.0,
-                interactive=True,
-                visible=False,
-            )
-            chorus_mix = gr.Slider(
-                minimum=0,
-                maximum=1,
-                label=i18n("Chorus Mix"),
-                info=i18n("Set the chorus mix."),
-                value=0.5,
-                interactive=True,
-                visible=False,
-            )
-            bitcrush = gr.Checkbox(
-                label=i18n("Bitcrush"),
-                info=i18n("Apply bitcrush to the audio."),
-                value=False,
-                interactive=True,
-                visible=False,
-            )
-            bitcrush_bit_depth = gr.Slider(
-                minimum=1,
-                maximum=32,
-                label=i18n("Bitcrush Bit Depth"),
-                info=i18n("Set the bitcrush bit depth."),
-                value=8,
-                interactive=True,
-                visible=False,
-            )
-            clipping = gr.Checkbox(
-                label=i18n("Clipping"),
-                info=i18n("Apply clipping to the audio."),
-                value=False,
-                interactive=True,
-                visible=False,
-            )
-            clipping_threshold = gr.Slider(
-                minimum=-60,
-                maximum=0,
-                label=i18n("Clipping Threshold"),
-                info=i18n("Set the clipping threshold."),
-                value=-6,
-                interactive=True,
-                visible=False,
-            )
-            compressor = gr.Checkbox(
-                label=i18n("Compressor"),
-                info=i18n("Apply compressor to the audio."),
-                value=False,
-                interactive=True,
-                visible=False,
-            )
-            compressor_threshold = gr.Slider(
-                minimum=-60,
-                maximum=0,
-                label=i18n("Compressor Threshold dB"),
-                info=i18n("Set the compressor threshold dB."),
-                value=0,
-                interactive=True,
-                visible=False,
-            )
-            compressor_ratio = gr.Slider(
-                minimum=1,
-                maximum=20,
-                label=i18n("Compressor Ratio"),
-                info=i18n("Set the compressor ratio."),
-                value=1,
-                interactive=True,
-                visible=False,
-            )
-            compressor_attack = gr.Slider(
-                minimum=0.0,
-                maximum=100,
-                label=i18n("Compressor Attack ms"),
-                info=i18n("Set the compressor attack ms."),
-                value=1.0,
-                interactive=True,
-                visible=False,
-            )
-            compressor_release = gr.Slider(
-                minimum=0.01,
-                maximum=100,
-                label=i18n("Compressor Release ms"),
-                info=i18n("Set the compressor release ms."),
-                value=100,
-                interactive=True,
-                visible=False,
-            )
-            delay = gr.Checkbox(
-                label=i18n("Delay"),
-                info=i18n("Apply delay to the audio."),
-                value=False,
-                interactive=True,
-                visible=False,
-            )
-            delay_seconds = gr.Slider(
-                minimum=0.0,
-                maximum=5.0,
-                label=i18n("Delay Seconds"),
-                info=i18n("Set the delay seconds."),
-                value=0.5,
-                interactive=True,
-                visible=False,
-            )
-            delay_feedback = gr.Slider(
-                minimum=0.0,
-                maximum=1.0,
-                label=i18n("Delay Feedback"),
-                info=i18n("Set the delay feedback."),
-                value=0.0,
-                interactive=True,
-                visible=False,
-            )
-            delay_mix = gr.Slider(
-                minimum=0.0,
-                maximum=1.0,
-                label=i18n("Delay Mix"),
-                info=i18n("Set the delay mix."),
-                value=0.5,
-                interactive=True,
-                visible=False,
-            )
+                pitch = gr.Slider(
+                    minimum=-24,
+                    maximum=24,
+                    step=1,
+                    label=i18n("Pitch"),
+                    info=i18n(
+                        "Set the pitch of the audio, the higher the value, the higher the pitch."
+                    ),
+                    value=0,
+                    interactive=True,
+                )
+                index_rate = gr.Slider(
+                    minimum=0,
+                    maximum=1,
+                    label=i18n("Search Feature Ratio"),
+                    info=i18n(
+                        "Influence exerted by the index file; a higher value corresponds to greater influence. However, opting for lower values can help mitigate artifacts present in the audio."
+                    ),
+                    value=0.75,
+                    interactive=True,
+                )
+                rms_mix_rate = gr.Slider(
+                    minimum=0,
+                    maximum=1,
+                    label=i18n("Volume Envelope"),
+                    info=i18n(
+                        "Substitute or blend with the volume envelope of the output. The closer the ratio is to 1, the more the output envelope is employed."
+                    ),
+                    value=1,
+                    interactive=True,
+                )
+                protect = gr.Slider(
+                    minimum=0,
+                    maximum=0.5,
+                    label=i18n("Protect Voiceless Consonants"),
+                    info=i18n(
+                        "Safeguard distinct consonants and breathing sounds to prevent electro-acoustic tearing and other artifacts. Pulling the parameter to its maximum value of 0.5 offers comprehensive protection. However, reducing this value might decrease the extent of protection while potentially mitigating the indexing effect."
+                    ),
+                    value=0.5,
+                    interactive=True,
+                )
 
-            pitch = gr.Slider(
-                minimum=-24,
-                maximum=24,
-                step=1,
-                label=i18n("Pitch"),
-                info=i18n(
-                    "Set the pitch of the audio, the higher the value, the higher the pitch."
-                ),
-                value=0,
-                interactive=True,
-            )
-            index_rate = gr.Slider(
-                minimum=0,
-                maximum=1,
-                label=i18n("Search Feature Ratio"),
-                info=i18n(
-                    "Influence exerted by the index file; a higher value corresponds to greater influence. However, opting for lower values can help mitigate artifacts present in the audio."
-                ),
-                value=0.75,
-                interactive=True,
-            )
-            rms_mix_rate = gr.Slider(
-                minimum=0,
-                maximum=1,
-                label=i18n("Volume Envelope"),
-                info=i18n(
-                    "Substitute or blend with the volume envelope of the output. The closer the ratio is to 1, the more the output envelope is employed."
-                ),
-                value=1,
-                interactive=True,
-            )
-            protect = gr.Slider(
-                minimum=0,
-                maximum=0.5,
-                label=i18n("Protect Voiceless Consonants"),
-                info=i18n(
-                    "Safeguard distinct consonants and breathing sounds to prevent electro-acoustic tearing and other artifacts. Pulling the parameter to its maximum value of 0.5 offers comprehensive protection. However, reducing this value might decrease the extent of protection while potentially mitigating the indexing effect."
-                ),
-                value=0.5,
-                interactive=True,
-            )
-
-            f0_method = gr.Radio(
-                label=i18n("Pitch extraction algorithm"),
-                info=i18n(
-                    "Pitch extraction algorithm to use for the audio conversion. The default algorithm is rmvpe, which is recommended for most cases."
-                ),
-                choices=[
-                    "crepe",
-                    "crepe-tiny",
-                    "rmvpe",
-                    "fcpe",
-                ],
-                value="rmvpe",
-                interactive=True,
-            )
-            embedder_model = gr.Radio(
-                label=i18n("Embedder Model"),
-                info=i18n("Model used for learning speaker embedding."),
-                choices=[
-                    "contentvec",
-                    "spin",
-                    "spin-v2",
-                    "chinese-hubert-base",
-                    "japanese-hubert-base",
-                    "korean-hubert-base",
-                    "custom",
-                ],
-                value="contentvec",
-                interactive=True,
-            )
-            with gr.Column(visible=False) as embedder_custom:
-                with gr.Accordion(i18n("Custom Embedder"), open=True):
-                    with gr.Row():
-                        embedder_model_custom = gr.Dropdown(
-                            label=i18n("Select Custom Embedder"),
-                            choices=refresh_embedders_folders(),
-                            interactive=True,
-                            allow_custom_value=True,
+                f0_method = gr.Radio(
+                    label=i18n("Pitch extraction algorithm"),
+                    info=i18n(
+                        "Pitch extraction algorithm to use for the audio conversion. The default algorithm is rmvpe, which is recommended for most cases."
+                    ),
+                    choices=[
+                        "crepe",
+                        "crepe-tiny",
+                        "rmvpe",
+                        "fcpe",
+                    ],
+                    value="rmvpe",
+                    interactive=True,
+                )
+                embedder_model = gr.Radio(
+                    label=i18n("Embedder Model"),
+                    info=i18n("Model used for learning speaker embedding."),
+                    choices=[
+                        "contentvec",
+                        "spin",
+                        "spin-v2",
+                        "chinese-hubert-base",
+                        "japanese-hubert-base",
+                        "korean-hubert-base",
+                        "custom",
+                    ],
+                    value="contentvec",
+                    interactive=True,
+                )
+                with gr.Column(visible=False) as embedder_custom:
+                    with gr.Accordion(i18n("Custom Embedder"), open=True):
+                        with gr.Row():
+                            embedder_model_custom = gr.Dropdown(
+                                label=i18n("Select Custom Embedder"),
+                                choices=refresh_embedders_folders(),
+                                interactive=True,
+                                allow_custom_value=True,
+                            )
+                            refresh_embedders_button = gr.Button(
+                                i18n("Refresh embedders")
+                            )
+                        folder_name_input = gr.Textbox(
+                            label=i18n("Folder Name"), interactive=True
                         )
-                        refresh_embedders_button = gr.Button(i18n("Refresh embedders"))
-                    folder_name_input = gr.Textbox(
-                        label=i18n("Folder Name"), interactive=True
-                    )
-                    with gr.Row():
-                        bin_file_upload = gr.File(
-                            label=i18n("Upload .bin"),
-                            type="filepath",
-                            interactive=True,
+                        with gr.Row():
+                            bin_file_upload = gr.File(
+                                label=i18n("Upload .bin"),
+                                type="filepath",
+                                interactive=True,
+                            )
+                            config_file_upload = gr.File(
+                                label=i18n("Upload .json"),
+                                type="filepath",
+                                interactive=True,
+                            )
+                        move_files_button = gr.Button(
+                            i18n("Move files to custom embedder folder")
                         )
-                        config_file_upload = gr.File(
-                            label=i18n("Upload .json"),
-                            type="filepath",
-                            interactive=True,
-                        )
-                    move_files_button = gr.Button(
-                        i18n("Move files to custom embedder folder")
-                    )
+
+        with gr.Column():
+            vc_output1 = gr.Textbox(
+                label=i18n("Output Information"),
+                info=i18n("The output information will be displayed here."),
+            )
 
     # single
     with gr.Row():
-        convert_button1 = gr.Button(i18n("Convert"))
-        vc_output1 = gr.Textbox(
-            label=i18n("Output Information"),
-            info=i18n("The output information will be displayed here."),
-        )
-        vc_output2 = gr.Audio(label=i18n("Export Audio"))
-
-        stop_button = gr.Button(i18n("Stop convert"), visible=False)
-        clear_outputs_infer = gr.Button(
-            i18n("Clear Outputs (Deletes all audios in assets/audios)")
-        )
+        with gr.Column():
+            convert_button1 = gr.Button(i18n("Convert"))
+            vc_output2 = gr.Audio(label=i18n("Export Audio"))
+            stop_button = gr.Button(i18n("Stop convert"), visible=False)
 
     stop_button.click(fn=stop_infer, inputs=[], outputs=[])
 
@@ -1330,12 +1324,6 @@ def inference_tab():
         outputs=[model_file, index_file, sid, model_title_text],
     )
 
-    clear_outputs_infer.click(
-        fn=delete_outputs,
-        inputs=[],
-        outputs=[],
-    )
-
     embedder_model.change(
         fn=toggle_visible_embedder_custom,
         inputs=[embedder_model],
@@ -1347,6 +1335,7 @@ def inference_tab():
         inputs=[folder_name_input, bin_file_upload, config_file_upload],
         outputs=[],
     )
+
     refresh_embedders_button.click(
         fn=lambda: gr.update(choices=refresh_embedders_folders()),
         inputs=[],
