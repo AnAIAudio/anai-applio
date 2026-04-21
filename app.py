@@ -1,7 +1,6 @@
 import gradio as gr
 import sys
 import os
-import pathlib
 import logging
 from typing import Any
 from rvc.lib.platform import platform_config
@@ -21,7 +20,6 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 now_dir = os.getcwd()
 sys.path.append(now_dir)
 
-# Import Tabs
 from tabs.inference.inference import inference_tab
 from tabs.train.train import train_tab
 from tabs.settings.settings import settings_tab
@@ -36,9 +34,7 @@ run_prerequisites_script(
     exe=True,
 )
 
-
 i18n = I18nAuto()
-
 
 client_mode = "--client" in sys.argv
 

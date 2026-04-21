@@ -200,17 +200,6 @@ def update_sliders(preset):
     )
 
 
-def update_sliders_formant(preset):
-    with open(
-        os.path.join(FORMANTSHIFT_DIR, f"{preset}.json"), "r", encoding="utf-8"
-    ) as json_file:
-        values = json.load(json_file)
-    return (
-        values["formant_qfrency"],
-        values["formant_timbre"],
-    )
-
-
 def export_presets(presets, file_path):
     with open(file_path, "w", encoding="utf-8") as json_file:
         json.dump(presets, json_file, ensure_ascii=False, indent=4)
@@ -250,15 +239,6 @@ def import_presets_button(file_path):
             "Presets imported successfully!",
         )
     return [], {}, "No file selected for import."
-
-
-def list_json_files(directory):
-    return [f.rsplit(".", 1)[0] for f in os.listdir(directory) if f.endswith(".json")]
-
-
-def refresh_presets():
-    json_files = list_json_files(PRESETS_DIR)
-    return gr.update(choices=json_files)
 
 
 def output_path_fn(input_audio_path):
@@ -536,11 +516,6 @@ def create_folder_and_move_files(folder_name, bin_file, config_file):
         )
 
     return f"Files moved to folder {target_folder}"
-
-
-def refresh_formant():
-    json_files = list_json_files(FORMANTSHIFT_DIR)
-    return gr.update(choices=json_files)
 
 
 def refresh_embedders_folders():
@@ -889,20 +864,7 @@ def inference_tab():
                     value=False,
                     interactive=True,
                 )
-                with gr.Row(visible=False) as formant_row:
-                    formant_preset = gr.Dropdown(
-                        label=i18n("Browse presets for formanting"),
-                        info=i18n(
-                            "Presets are located in /assets/formant_shift folder"
-                        ),
-                        choices=list_json_files(FORMANTSHIFT_DIR),
-                        visible=False,
-                        interactive=True,
-                    )
-                    formant_refresh_button = gr.Button(
-                        value=i18n("Refresh"),
-                        visible=False,
-                    )
+
                 formant_qfrency = gr.Slider(
                     value=1.0,
                     info=i18n("Default value is 1.0"),
@@ -1218,34 +1180,7 @@ def inference_tab():
                     interactive=True,
                     visible=False,
                 )
-                with gr.Accordion(i18n("Preset Settings"), open=False):
-                    with gr.Row():
-                        preset_dropdown = gr.Dropdown(
-                            label=i18n("Select Custom Preset"),
-                            choices=list_json_files(PRESETS_DIR),
-                            interactive=True,
-                        )
-                        presets_refresh_button = gr.Button(i18n("Refresh Presets"))
-                    import_file = gr.File(
-                        label=i18n("Select file to import"),
-                        file_count="single",
-                        type="filepath",
-                        interactive=True,
-                    )
-                    import_file.change(
-                        import_presets_button,
-                        inputs=import_file,
-                        outputs=[preset_dropdown],
-                    )
-                    presets_refresh_button.click(
-                        refresh_presets, outputs=preset_dropdown
-                    )
-                    with gr.Row():
-                        preset_name_input = gr.Textbox(
-                            label=i18n("Preset Name"),
-                            placeholder=i18n("Enter preset name"),
-                        )
-                        export_button = gr.Button(i18n("Export Preset"))
+
                 pitch = gr.Slider(
                     minimum=-24,
                     maximum=24,
@@ -1287,26 +1222,7 @@ def inference_tab():
                     value=0.5,
                     interactive=True,
                 )
-                preset_dropdown.change(
-                    update_sliders,
-                    inputs=preset_dropdown,
-                    outputs=[
-                        pitch,
-                        index_rate,
-                        rms_mix_rate,
-                        protect,
-                    ],
-                )
-                export_button.click(
-                    export_presets_button,
-                    inputs=[
-                        preset_name_input,
-                        pitch,
-                        index_rate,
-                        rms_mix_rate,
-                        protect,
-                    ],
-                )
+
                 f0_method = gr.Radio(
                     label=i18n("Pitch extraction algorithm"),
                     info=i18n(
@@ -1591,20 +1507,7 @@ def inference_tab():
                     value=False,
                     interactive=True,
                 )
-                with gr.Row(visible=False) as formant_row_batch:
-                    formant_preset_batch = gr.Dropdown(
-                        label=i18n("Browse presets for formanting"),
-                        info=i18n(
-                            "Presets are located in /assets/formant_shift folder"
-                        ),
-                        choices=list_json_files(FORMANTSHIFT_DIR),
-                        visible=False,
-                        interactive=True,
-                    )
-                    formant_refresh_button_batch = gr.Button(
-                        value=i18n("Refresh"),
-                        visible=False,
-                    )
+
                 formant_qfrency_batch = gr.Slider(
                     value=1.0,
                     info=i18n("Default value is 1.0"),
@@ -1920,35 +1823,7 @@ def inference_tab():
                     interactive=True,
                     visible=False,
                 )
-                with gr.Accordion(i18n("Preset Settings"), open=False):
-                    with gr.Row():
-                        preset_dropdown = gr.Dropdown(
-                            label=i18n("Select Custom Preset"),
-                            interactive=True,
-                        )
-                        presets_batch_refresh_button = gr.Button(
-                            i18n("Refresh Presets")
-                        )
-                    import_file = gr.File(
-                        label=i18n("Select file to import"),
-                        file_count="single",
-                        type="filepath",
-                        interactive=True,
-                    )
-                    import_file.change(
-                        import_presets_button,
-                        inputs=import_file,
-                        outputs=[preset_dropdown],
-                    )
-                    presets_batch_refresh_button.click(
-                        refresh_presets, outputs=preset_dropdown
-                    )
-                    with gr.Row():
-                        preset_name_input = gr.Textbox(
-                            label=i18n("Preset Name"),
-                            placeholder=i18n("Enter preset name"),
-                        )
-                        export_button = gr.Button(i18n("Export Preset"))
+
                 pitch_batch = gr.Slider(
                     minimum=-24,
                     maximum=24,
@@ -1990,27 +1865,7 @@ def inference_tab():
                     value=0.5,
                     interactive=True,
                 )
-                preset_dropdown.change(
-                    update_sliders,
-                    inputs=preset_dropdown,
-                    outputs=[
-                        pitch_batch,
-                        index_rate_batch,
-                        rms_mix_rate_batch,
-                        protect_batch,
-                    ],
-                )
-                export_button.click(
-                    export_presets_button,
-                    inputs=[
-                        preset_name_input,
-                        pitch,
-                        index_rate,
-                        rms_mix_rate_batch,
-                        protect,
-                    ],
-                    outputs=[],
-                )
+
                 f0_method_batch = gr.Radio(
                     label=i18n("Pitch extraction algorithm"),
                     info=i18n(
@@ -2174,49 +2029,7 @@ def inference_tab():
         inputs=[clean_audio],
         outputs=[clean_strength],
     )
-    formant_shifting.change(
-        fn=toggle_visible_formant_shifting,
-        inputs=[formant_shifting],
-        outputs=[
-            formant_row,
-            formant_preset,
-            formant_refresh_button,
-            formant_qfrency,
-            formant_timbre,
-        ],
-    )
-    formant_shifting_batch.change(
-        fn=toggle_visible_formant_shifting,
-        inputs=[formant_shifting],
-        outputs=[
-            formant_row_batch,
-            formant_preset_batch,
-            formant_refresh_button_batch,
-            formant_qfrency_batch,
-            formant_timbre_batch,
-        ],
-    )
-    formant_refresh_button.click(
-        fn=refresh_formant,
-        inputs=[],
-        outputs=[formant_preset],
-    )
-    formant_preset.change(
-        fn=update_sliders_formant,
-        inputs=[formant_preset],
-        outputs=[
-            formant_qfrency,
-            formant_timbre,
-        ],
-    )
-    formant_preset_batch.change(
-        fn=update_sliders_formant,
-        inputs=[formant_preset_batch],
-        outputs=[
-            formant_qfrency,
-            formant_timbre,
-        ],
-    )
+
     post_process.change(
         fn=post_process_visible,
         inputs=[post_process],
