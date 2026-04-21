@@ -21,6 +21,10 @@ from rvc.lib.tools.model_download import model_download_pipeline
 
 python = sys.executable
 
+from assets.i18n.i18n import I18nAuto
+
+i18n = I18nAuto()
+
 
 # Get TTS Voices -> https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/voices/list?trustedclienttoken=6A5AA1D4EAFF4E9FB37E23D68491D6F4
 @lru_cache(maxsize=1)  # Cache only one result since the file is static
@@ -74,6 +78,7 @@ def run_infer_script(
     formant_qfrency: float = 1.0,
     formant_timbre: float = 1.0,
     post_process: bool = False,
+    db_compensation: bool = False,
     reverb: bool = False,
     pitch_shift: bool = False,
     limiter: bool = False,
@@ -133,6 +138,7 @@ def run_infer_script(
         "embedder_model": embedder_model,
         "embedder_model_custom": embedder_model_custom,
         "post_process": post_process,
+        "db_compensation": db_compensation,
         "formant_shifting": formant_shifting,
         "formant_qfrency": formant_qfrency,
         "formant_timbre": formant_timbre,
@@ -208,6 +214,7 @@ def run_batch_infer_script(
     formant_qfrency: float = 1.0,
     formant_timbre: float = 1.0,
     post_process: bool = False,
+    db_compensation: bool = False,
     reverb: bool = False,
     pitch_shift: bool = False,
     limiter: bool = False,
@@ -267,6 +274,7 @@ def run_batch_infer_script(
         "embedder_model": embedder_model,
         "embedder_model_custom": embedder_model_custom,
         "post_process": post_process,
+        "db_compensation": db_compensation,
         "formant_shifting": formant_shifting,
         "formant_qfrency": formant_qfrency,
         "formant_timbre": formant_timbre,
@@ -313,101 +321,6 @@ def run_batch_infer_script(
     )
 
     return f"Files from {input_folder} inferred successfully."
-
-
-# TTS
-def run_tts_script(
-    tts_file: str,
-    tts_text: str,
-    tts_voice: str,
-    tts_rate: int,
-    pitch: int,
-    index_rate: float,
-    volume_envelope: float,
-    protect: float,
-    f0_method: str,
-    output_tts_path: str,
-    output_rvc_path: str,
-    pth_path: str,
-    index_path: str,
-    split_audio: bool,
-    f0_autotune: bool,
-    f0_autotune_strength: float,
-    proposed_pitch: bool,
-    proposed_pitch_threshold: float,
-    clean_audio: bool,
-    clean_strength: float,
-    export_format: str,
-    embedder_model: str,
-    embedder_model_custom: str = None,
-    sid: int = 0,
-):
-
-    tts_script_path = os.path.join("rvc", "lib", "tools", "tts.py")
-
-    if os.path.exists(output_tts_path) and os.path.abspath(output_tts_path).startswith(
-        os.path.abspath("assets")
-    ):
-        os.remove(output_tts_path)
-
-    command_tts = [
-        *map(
-            str,
-            [
-                python,
-                tts_script_path,
-                tts_file,
-                tts_text,
-                tts_voice,
-                tts_rate,
-                output_tts_path,
-            ],
-        ),
-    ]
-    subprocess.run(command_tts)
-    infer_pipeline = import_voice_converter()
-    infer_pipeline.convert_audio(
-        pitch=pitch,
-        index_rate=index_rate,
-        volume_envelope=volume_envelope,
-        protect=protect,
-        f0_method=f0_method,
-        audio_input_path=output_tts_path,
-        audio_output_path=output_rvc_path,
-        model_path=pth_path,
-        index_path=index_path,
-        split_audio=split_audio,
-        f0_autotune=f0_autotune,
-        f0_autotune_strength=f0_autotune_strength,
-        proposed_pitch=proposed_pitch,
-        proposed_pitch_threshold=proposed_pitch_threshold,
-        clean_audio=clean_audio,
-        clean_strength=clean_strength,
-        export_format=export_format,
-        embedder_model=embedder_model,
-        embedder_model_custom=embedder_model_custom,
-        sid=sid,
-        formant_shifting=None,
-        formant_qfrency=None,
-        formant_timbre=None,
-        post_process=None,
-        reverb=None,
-        pitch_shift=None,
-        limiter=None,
-        gain=None,
-        distortion=None,
-        chorus=None,
-        bitcrush=None,
-        clipping=None,
-        compressor=None,
-        delay=None,
-        sliders=None,
-    )
-
-    return f"Text {tts_text} synthesized successfully.", output_rvc_path.replace(
-        ".wav", f".{export_format.lower()}"
-    )
-
 
 # Preprocess
 def run_preprocess_script(
@@ -491,7 +404,12 @@ from utils.redis_util import ACTIVE_JOBS_ZSET_KEY
 
 
 # Train
-@celery_app.task(bind=True, name="applio.run_train_script")
+@celery_app.task(
+    bind=True,
+    name="applio.run_train_script",
+    time_limit=36000,
+    soft_time_limit=21600,
+)
 def run_train_script(
     self,
     model_name: str,
@@ -519,13 +437,17 @@ def run_train_script(
     import datetime
     from pathlib import Path
     import redis
-    from utils.redis_util import JOB_INDEX_REDIS_URL
+    from utils.redis_util import (
+        JOB_INDEX_REDIS_URL,
+        get_redis_log_key,
+        get_redis_meta_key,
+    )
 
     task_id = self.request.id
     job_redis_url = os.getenv(JOB_INDEX_REDIS_URL)
 
-    log_key = f"job:{task_id}:log"
-    meta_key = f"job:{task_id}:meta"
+    log_key = get_redis_log_key(task_id=task_id)
+    meta_key = get_redis_meta_key(task_id=task_id)
 
     r = (
         redis.Redis.from_url(job_redis_url, decode_responses=True)
@@ -560,6 +482,10 @@ def run_train_script(
         r.zadd(ACTIVE_JOBS_ZSET_KEY, {task_id: enq})
 
     def push_log(line: str):
+        """
+        로그를 Redis에 추가하고 로그 파일에 기록
+        """
+
         try:
             log_fp.write(line if line.endswith("\n") else line + "\n")
         except Exception:
@@ -580,9 +506,13 @@ def run_train_script(
         r.ltrim(log_key, -20000, -1)
 
     def set_meta(**kwargs):
+        """
+        Redis에 메타 정보를 설정
+        """
+
         if not r:
             return
-        # 값은 문자열로 저장되는 게 안전
+
         mapping = {k: str(v) for k, v in kwargs.items() if v is not None}
         if mapping:
             r.hset(meta_key, mapping=mapping)
@@ -642,6 +572,7 @@ def run_train_script(
     last_progress = 0
 
     push_log(f"[celery] task_id={task_id} starting training: {' '.join(command)}")
+    proc: subprocess.Popen | None = None
     try:
         proc = subprocess.Popen(
             command,
@@ -650,11 +581,25 @@ def run_train_script(
             text=True,
             bufsize=1,
             universal_newlines=True,
+            start_new_session=True,
         )
+
+        stop_requested = False
 
         assert proc.stdout is not None
         for line in proc.stdout:
             push_log(line)
+
+            if "Overtraining detected" in line:
+                stop_requested = True
+                push_log(
+                    "[celery] overtraining message detected -> terminating training subprocess..."
+                )
+                try:
+                    proc.terminate()
+                except Exception:
+                    pass
+                break
 
             m = epoch_re.search(line)
             if m and total_epoch > 0:
@@ -673,11 +618,31 @@ def run_train_script(
                         },
                     )
 
-        rc = proc.wait()
+        # 안 끝나면 kill로 강제 종료
+        if proc.poll() is None:
+            try:
+                proc.wait(timeout=30)
+            except subprocess.TimeoutExpired:
+                push_log(
+                    "[celery] WARNING: training subprocess did not exit after terminate(); killing..."
+                )
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+                proc.wait(timeout=30)
+
+        rc = proc.returncode
+
+        if stop_requested:
+            push_log(
+                f"[celery] {i18n('training stopped due to overtraining detection. building index anyway')}..."
+            )
+
         if rc != 0:
             raise subprocess.CalledProcessError(rc, command)
 
-        push_log("[celery] training finished. building index...")
+        push_log(f"[celery] {i18n('training finished. building index')}...")
         set_meta(status="INDEXING")
         self.update_state(
             state="PROGRESS", meta={"progress": last_progress, "phase": "INDEXING"}
@@ -685,7 +650,11 @@ def run_train_script(
 
         run_index_script(model_name, index_algorithm)
 
-        set_meta(progress=100, status="SUCCESS", finished_at=int(time.time()))
+        if stop_requested:
+            set_meta(progress=100, status="OVERTRAINING", finished_at=int(time.time()))
+        else:
+            set_meta(progress=100, status="SUCCESS", finished_at=int(time.time()))
+
         push_log("[celery] SUCCESS")
         return f"Model {model_name} trained successfully."
     except Exception as e:
@@ -697,12 +666,19 @@ def run_train_script(
             r.zrem(ACTIVE_JOBS_ZSET_KEY, task_id)
 
         try:
+            if proc is not None and proc.poll() is None:
+                proc.terminate()
+                try:
+                    proc.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+        except Exception:
+            pass
+
+        try:
             log_fp.close()
         except Exception:
             pass
-    # subprocess.run(command, check=True)
-    # run_index_script(model_name, index_algorithm)
-    # return f"Model {model_name} trained successfully."
 
 
 # Index

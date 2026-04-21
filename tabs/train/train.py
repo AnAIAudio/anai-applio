@@ -408,14 +408,14 @@ def train_tab():
 
         queue_table = gr.Dataframe(
             headers=[
+                "model_name",
                 "task_id",
                 "state",
                 "progress(%)",
                 "total_epoch",
-                "model_name",
                 "age_sec",
             ],
-            datatype=["str", "str", "number", "number", "str", "number"],
+            datatype=["str", "str", "str", "number", "number", "str", "number"],
             row_count=0,
             col_count=(6, "fixed"),
             interactive=True,

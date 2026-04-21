@@ -71,7 +71,18 @@ services:
     networks:
       - app-network
     volumes:
-      - nfs_applio_logs:/app/logs
+      - type: volume
+        source: nfs_applio_logs
+        target: /app/logs
+      - type: volume
+        source: nfs_applio_models
+        target: /app/rvc/models
+      - type: volume
+        source: nfs_applio_datasets
+        target: /app/assets/datasets
+      - type: volume
+        source: nfs_applio_audios
+        target: /app/assets/audios
       - type: tmpfs
         target: /dev/shm
         tmpfs:
@@ -129,6 +140,13 @@ networks:
     driver: overlay
 
 volumes:
+  nfs_applio_data:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: "addr=211.233.64.121,rw,nolock,soft"
+      device: ":/data/nfs/share/anai-applio"
+
   nfs_applio_logs:
     driver: local
     driver_opts:
@@ -136,6 +154,26 @@ volumes:
       o: "addr=211.233.64.121,rw,nolock,soft"
       device: ":/data/nfs/share/anai-applio/logs"
 
+  nfs_applio_models:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: "addr=211.233.64.121,rw,nolock,soft"
+      device: ":/data/nfs/share/anai-applio/rvc/models"
+
+  nfs_applio_datasets:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: "addr=211.233.64.121,rw,nolock,soft"
+      device: ":/data/nfs/share/anai-applio/assets/datasets"
+
+  nfs_applio_audios:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: "addr=211.233.64.121,rw,nolock,soft"
+      device: ":/data/nfs/share/anai-applio/assets/audios"
   rabbitmq_data:
     driver: local
 

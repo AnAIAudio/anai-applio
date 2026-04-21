@@ -2,18 +2,15 @@
 .git
 .gitmodules
 .gitignore
+.github
 
-# 가상환경/패키지/캐시
-.venv
-.env
+.venv/
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-*.egg-info/
-.eggs/
+
 pip-wheel-metadata/
-.dist-info/
 .uv/
 .uv_cache/
 .cache/
@@ -25,20 +22,22 @@ pip-wheel-metadata/
 *.swp
 *.swo
 
-# 운영/로그/런타임 산출물
+# 로그 관련 내용은 NFS로 볼륨 마운팅, 빌드 때는 필요없음
 logs/
-*.log
+assets/audios/
+assets/datasets/
 
-# OS/기타 잡파일
+# 로그/OS/기타 잡파일
+*.log
 .DS_Store
 Thumbs.db
+.env
+*.exe
 
-# 빌드 산출물
-build/
-dist/
-site/
-htmlcov/
-coverage.xml
-.pytest_cache/
-.mypy_cache/
-.tox/
+# 모델 파일들
+*.pt
+*.pth
+*.index
+*.onnx
+*.ckpt
+*.safetensors

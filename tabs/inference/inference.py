@@ -881,6 +881,14 @@ def inference_tab():
                     value=False,
                     interactive=True,
                 )
+                db_compensation = gr.Checkbox(
+                    label=i18n("dB Compensation"),
+                    info=i18n(
+                        "Automatically adjust output volume to match the input audio level."
+                    ),
+                    value=False,
+                    interactive=True,
+                )
                 with gr.Row(visible=False) as formant_row:
                     formant_preset = gr.Dropdown(
                         label=i18n("Browse presets for formanting"),
@@ -1572,6 +1580,14 @@ def inference_tab():
                 post_process_batch = gr.Checkbox(
                     label=i18n("Post-Process"),
                     info=i18n("Post-process the audio to apply effects to the output."),
+                    value=False,
+                    interactive=True,
+                )
+                db_compensation_batch = gr.Checkbox(
+                    label=i18n("dB Compensation"),
+                    info=i18n(
+                        "Automatically adjust output volume to match the input audio level."
+                    ),
                     value=False,
                     interactive=True,
                 )
@@ -2474,6 +2490,7 @@ def inference_tab():
             formant_qfrency,
             formant_timbre,
             post_process,
+            db_compensation,
             reverb,
             pitch_shift,
             limiter,
@@ -2540,6 +2557,7 @@ def inference_tab():
             formant_qfrency_batch,
             formant_timbre_batch,
             post_process_batch,
+            db_compensation_batch,
             reverb_batch,
             pitch_shift_batch,
             limiter_batch,
