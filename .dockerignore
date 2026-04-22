@@ -23,7 +23,21 @@ pip-wheel-metadata/
 *.swo
 
 # 로그 관련 내용은 NFS로 볼륨 마운팅, 빌드 때는 필요없음
-logs/
+# logs 디렉토리 내부는 기본적으로 제외
+logs/*
+
+# 단, 아래 디렉토리들은 포함
+!logs/jobs/
+!logs/jobs/**
+!logs/mute/
+!logs/mute/**
+!logs/mute_spin/
+!logs/mute_spin/**
+!logs/mute_spin_v2/
+!logs/mute_spin_v2/**
+!logs/reference/
+!logs/reference/**
+
 assets/audios/
 assets/datasets/
 

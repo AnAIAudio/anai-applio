@@ -49,3 +49,7 @@ services:
     command: [ "redis-server", "--appendonly", "yes" ]
     volumes:
       - redis_data:/data
+
+volumes:
+  rabbitmq_data:
+  redis_data:
