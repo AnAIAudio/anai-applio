@@ -1,0 +1,14 @@
+services:
+  applio:
+    volumes:
+      - "${HOME}/.aws:/root/.aws:ro"
+      - applio_logs:/app/logs
+      - applio_models:/app/rvc/models
+      - applio_datasets:/app/assets/datasets
+      - applio_audios:/app/assets/audios
+
+volumes:
+  applio_logs:
+  applio_models:
+  applio_datasets:
+  applio_audios:

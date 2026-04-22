@@ -2,3 +2,46 @@ services:
   applio:
     environment:
       - ENVIRONMENT=development
+    volumes:
+      - "${HOME}/.aws:/root/.aws:ro"
+      - type: volume
+        source: nfs_applio_logs
+        target: /app/logs
+      - type: volume
+        source: nfs_applio_models
+        target: /app/rvc/models
+      - type: volume
+        source: nfs_applio_datasets
+        target: /app/assets/datasets
+      - type: volume
+        source: nfs_applio_audios
+        target: /app/assets/audios
+
+volumes:
+  nfs_applio_logs:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: "addr=211.233.64.121,rw,nolock,soft"
+      device: ":/data/nfs/share/anai-applio-production/logs"
+
+  nfs_applio_models:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: "addr=211.233.64.121,rw,nolock,soft"
+      device: ":/data/nfs/share/anai-applio-production/rvc/models"
+
+  nfs_applio_datasets:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: "addr=211.233.64.121,rw,nolock,soft"
+      device: ":/data/nfs/share/anai-applio-production/assets/datasets"
+
+  nfs_applio_audios:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: "addr=211.233.64.121,rw,nolock,soft"
+      device: ":/data/nfs/share/anai-applio-production/assets/audios"
