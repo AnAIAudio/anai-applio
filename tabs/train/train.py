@@ -387,7 +387,6 @@ def train_tab():
                     interactive=True,
                 )
                 queue_refresh = gr.Button(i18n("Refresh now"))
-                queue_delete = gr.Button(i18n("Delete selected"), variant="stop")
 
             queue_summary = gr.Textbox(
                 label=i18n("Summary"),
@@ -410,11 +409,15 @@ def train_tab():
                     "total_epoch",
                     "age_sec",
                 ],
-                datatype=["str", "str", "str", "number", "number", "str", "number"],
+                datatype=["str", "str", "str", "number", "number", "number"],
                 row_count=0,
                 col_count=(6, "fixed"),
                 interactive=True,
             )
+
+            with gr.Row():
+                queue_stop = gr.Button(i18n("Stop selected"), variant="stop")
+                queue_delete = gr.Button(i18n("Delete selected"))
 
         # ── 오른쪽: 학습 모니터 (기본 접힘) ─────────────────────
         with gr.Column():
@@ -466,31 +469,19 @@ def train_tab():
         outputs=[queue_summary, queue_table],
     )
 
-    # 테이블 행 클릭 시: 첫 번째 컬럼(task_id)을 selected_task_id에 세팅
-    def _on_queue_select(evt: gr.SelectData):
-        return str(evt.value or "")
+    # 테이블 행 클릭 시: task_id 컬럼(index 1)을 selected_task_id에 세팅
+    def _on_queue_select(evt: gr.SelectData, data):
+        try:
+            row_idx = evt.index[0]
+            task_id = str(data.iloc[row_idx, 1])
+            return task_id
+        except Exception:
+            return str(evt.value or "")
 
     queue_table.select(
         fn=_on_queue_select,
-        inputs=[],
+        inputs=[queue_table],
         outputs=[selected_task_id],
-    )
-
-    # Delete 버튼: Redis에서 job log/meta 삭제 + active zset 제거 후 테이블 갱신
-    def delete_selected_task(task_id: str, limit: int):
-        from utils.redis_util import delete_job
-
-        ok, msg = delete_job(task_id)
-        gr.Info(msg) if ok else gr.Warning(msg)
-
-        summary, rows = _queue_refresh(limit)
-        # 삭제했으니 선택도 비워줌
-        return "", summary, rows
-
-    queue_delete.click(
-        fn=delete_selected_task,
-        inputs=[selected_task_id, queue_limit],
-        outputs=[selected_task_id, queue_summary, queue_table],
     )
 
     queue_timer = gr.Timer(value=30.0)
@@ -1128,183 +1119,238 @@ def train_tab():
                 outputs=[],
             )
 
-            def toggle_visible(checkbox):
-                return {"visible": checkbox, "__type__": "update"}
+    # ── helper 함수 & 이벤트 바인딩 ─────────────────────────────
+    def toggle_visible(checkbox):
+        return {"visible": checkbox, "__type__": "update"}
 
-            def toggle_pretrained(pretrained, custom_pretrained):
-                if custom_pretrained == False:
-                    return {"visible": pretrained, "__type__": "update"}, {
-                        "visible": False,
-                        "__type__": "update",
-                    }
-                else:
-                    return {"visible": pretrained, "__type__": "update"}, {
-                        "visible": pretrained,
-                        "__type__": "update",
-                    }
+    def toggle_pretrained(pretrained, custom_pretrained):
+        if custom_pretrained == False:
+            return {"visible": pretrained, "__type__": "update"}, {
+                "visible": False,
+                "__type__": "update",
+            }
+        else:
+            return {"visible": pretrained, "__type__": "update"}, {
+                "visible": pretrained,
+                "__type__": "update",
+            }
 
-            def disable_stop_train_button():
-                return {"visible": True, "__type__": "update"}, {
-                    "visible": False,
-                    "__type__": "update",
-                }
+    def disable_stop_train_button():
+        return {"visible": True, "__type__": "update"}, {
+            "visible": False,
+            "__type__": "update",
+        }
 
-            def download_prerequisites():
-                gr.Info(
-                    "Checking for prerequisites with pitch guidance... Missing files will be downloaded. If you already have them, this step will be skipped."
-                )
-                run_prerequisites_script(
-                    pretraineds_hifigan=True,
-                    models=False,
-                    exe=False,
-                )
-                gr.Info(
-                    "Prerequisites check complete. Missing files were downloaded, and you may now start preprocessing."
-                )
+    def download_prerequisites():
+        gr.Info(
+            "Checking for prerequisites with pitch guidance... Missing files will be downloaded. If you already have them, this step will be skipped."
+        )
+        run_prerequisites_script(
+            pretraineds_hifigan=True,
+            models=False,
+            exe=False,
+        )
+        gr.Info(
+            "Prerequisites check complete. Missing files were downloaded, and you may now start preprocessing."
+        )
 
-            def toggle_visible_embedder_custom(embedder_model):
-                if embedder_model == "custom":
-                    return {"visible": True, "__type__": "update"}
-                return {"visible": False, "__type__": "update"}
+    def toggle_visible_embedder_custom(embedder_model):
+        if embedder_model == "custom":
+            return {"visible": True, "__type__": "update"}
+        return {"visible": False, "__type__": "update"}
 
-            def toggle_architecture(architecture):
-                if architecture == "Applio":
-                    return {
-                        "choices": ["32000", "40000", "48000"],
-                        "__type__": "update",
-                    }, {
-                        "interactive": True,
-                        "__type__": "update",
-                    }
-                else:
-                    return {
-                        "choices": ["32000", "40000", "48000"],
-                        "__type__": "update",
-                        "value": "40000",
-                    }, {"interactive": False, "__type__": "update", "value": "HiFi-GAN"}
+    def toggle_architecture(architecture):
+        if architecture == "Applio":
+            return {
+                "choices": ["32000", "40000", "48000"],
+                "__type__": "update",
+            }, {
+                "interactive": True,
+                "__type__": "update",
+            }
+        else:
+            return {
+                "choices": ["32000", "40000", "48000"],
+                "__type__": "update",
+                "value": "40000",
+            }, {"interactive": False, "__type__": "update", "value": "HiFi-GAN"}
 
-            def toggle_vocoder(vocoder):
-                if vocoder == "HiFi-GAN":
-                    return {
-                        "choices": ["32000", "40000", "48000"],
-                        "__type__": "update",
-                        "value": "40000",
-                    }
-                else:
-                    return {
-                        "choices": ["24000", "32000"],
-                        "__type__": "update",
-                        "value": "32000",
-                    }
+    def toggle_vocoder(vocoder):
+        if vocoder == "HiFi-GAN":
+            return {
+                "choices": ["32000", "40000", "48000"],
+                "__type__": "update",
+                "value": "40000",
+            }
+        else:
+            return {
+                "choices": ["24000", "32000"],
+                "__type__": "update",
+                "value": "32000",
+            }
 
-            def update_slider_visibility(noise_reduction):
-                return gr.update(visible=noise_reduction)
+    def update_slider_visibility(noise_reduction):
+        return gr.update(visible=noise_reduction)
 
-            noise_reduction.change(
-                fn=update_slider_visibility,
-                inputs=noise_reduction,
-                outputs=clean_strength,
-            )
-            architecture.change(
-                fn=toggle_architecture,
-                inputs=[architecture],
-                outputs=[sampling_rate, vocoder],
-            )
-            vocoder.change(
-                fn=toggle_vocoder,
-                inputs=[vocoder],
-                outputs=[sampling_rate],
-            )
-            refresh.click(
-                fn=refresh_models_and_datasets,
-                inputs=[],
-                outputs=[model_name, dataset_path],
-            )
-            upload_audio_dataset.upload(
-                fn=save_drop_dataset_audio,
-                inputs=[upload_audio_dataset, dataset_name],
-                outputs=[upload_audio_dataset, dataset_path],
-            )
-            embedder_model.change(
-                fn=toggle_visible_embedder_custom,
-                inputs=[embedder_model],
-                outputs=[embedder_custom],
-            )
-            embedder_model.change(
-                fn=toggle_visible_embedder_custom,
-                inputs=[embedder_model],
-                outputs=[embedder_custom],
-            )
-            move_files_button.click(
-                fn=create_folder_and_move_files,
-                inputs=[folder_name_input, bin_file_upload, config_file_upload],
-                outputs=[],
-            )
-            refresh_embedders_button.click(
-                fn=refresh_embedders_folders, inputs=[], outputs=[embedder_model_custom]
-            )
-            pretrained.change(
-                fn=toggle_pretrained,
-                inputs=[pretrained, custom_pretrained],
-                outputs=[custom_pretrained, pretrained_custom_settings],
-            )
-            custom_pretrained.change(
-                fn=toggle_visible,
-                inputs=[custom_pretrained],
-                outputs=[pretrained_custom_settings],
-            )
-            refresh_custom_pretaineds_button.click(
-                fn=refresh_custom_pretraineds,
-                inputs=[],
-                outputs=[g_pretrained_path, d_pretrained_path],
-            )
-            upload_pretrained.upload(
-                fn=save_drop_model,
-                inputs=[upload_pretrained],
-                outputs=[upload_pretrained],
-            )
-            overtraining_detector.change(
-                fn=toggle_visible,
-                inputs=[overtraining_detector],
-                outputs=[overtraining_settings],
-            )
-            train_button.click(
-                fn=enforce_terms,
-                inputs=[
-                    terms_checkbox,
-                    queue_limit,
-                    model_name,
-                    save_every_epoch,
-                    save_only_latest,
-                    save_every_weights,
-                    total_epoch,
-                    sampling_rate,
-                    batch_size,
-                    gpu,
-                    overtraining_detector,
-                    overtraining_threshold,
-                    pretrained,
-                    cleanup,
-                    index_algorithm,
-                    cache_dataset_in_gpu,
-                    custom_pretrained,
-                    g_pretrained_path,
-                    d_pretrained_path,
-                    vocoder,
-                    checkpointing,
-                ],
-                outputs=[
-                    train_output_info,
-                    monitor_task_id,
-                    queue_summary,
-                    queue_table,
-                    train_button,
-                    stop_train_button,
-                ],
-            )
+    noise_reduction.change(
+        fn=update_slider_visibility,
+        inputs=noise_reduction,
+        outputs=clean_strength,
+    )
+    architecture.change(
+        fn=toggle_architecture,
+        inputs=[architecture],
+        outputs=[sampling_rate, vocoder],
+    )
+    vocoder.change(
+        fn=toggle_vocoder,
+        inputs=[vocoder],
+        outputs=[sampling_rate],
+    )
+    refresh.click(
+        fn=refresh_models_and_datasets,
+        inputs=[],
+        outputs=[model_name, dataset_path],
+    )
+    upload_audio_dataset.upload(
+        fn=save_drop_dataset_audio,
+        inputs=[upload_audio_dataset, dataset_name],
+        outputs=[upload_audio_dataset, dataset_path],
+    )
+    embedder_model.change(
+        fn=toggle_visible_embedder_custom,
+        inputs=[embedder_model],
+        outputs=[embedder_custom],
+    )
+    move_files_button.click(
+        fn=create_folder_and_move_files,
+        inputs=[folder_name_input, bin_file_upload, config_file_upload],
+        outputs=[],
+    )
+    refresh_embedders_button.click(
+        fn=refresh_embedders_folders, inputs=[], outputs=[embedder_model_custom]
+    )
+    pretrained.change(
+        fn=toggle_pretrained,
+        inputs=[pretrained, custom_pretrained],
+        outputs=[custom_pretrained, pretrained_custom_settings],
+    )
+    custom_pretrained.change(
+        fn=toggle_visible,
+        inputs=[custom_pretrained],
+        outputs=[pretrained_custom_settings],
+    )
+    refresh_custom_pretaineds_button.click(
+        fn=refresh_custom_pretraineds,
+        inputs=[],
+        outputs=[g_pretrained_path, d_pretrained_path],
+    )
+    upload_pretrained.upload(
+        fn=save_drop_model,
+        inputs=[upload_pretrained],
+        outputs=[upload_pretrained],
+    )
+    overtraining_detector.change(
+        fn=toggle_visible,
+        inputs=[overtraining_detector],
+        outputs=[overtraining_settings],
+    )
+    train_button.click(
+        fn=enforce_terms,
+        inputs=[
+            terms_checkbox,
+            queue_limit,
+            model_name,
+            save_every_epoch,
+            save_only_latest,
+            save_every_weights,
+            total_epoch,
+            sampling_rate,
+            batch_size,
+            gpu,
+            overtraining_detector,
+            overtraining_threshold,
+            pretrained,
+            cleanup,
+            index_algorithm,
+            cache_dataset_in_gpu,
+            custom_pretrained,
+            g_pretrained_path,
+            d_pretrained_path,
+            vocoder,
+            checkpointing,
+        ],
+        outputs=[
+            train_output_info,
+            monitor_task_id,
+            queue_summary,
+            queue_table,
+            train_button,
+            stop_train_button,
+        ],
+    )
 
-            train_output_info.change(
-                fn=disable_stop_train_button,
-                inputs=[],
-                outputs=[train_button, stop_train_button],
-            )
+    # 훈련 종료(Celery terminal 상태) 감지 → 큐 목록 + 모니터 즉시 새로고침
+    def _on_status_change(status: str, task_id: str, limit: int):
+        terminal = ("SUCCESS", "FAILURE", "REVOKED", "OVERTRAINING")
+        if not any(status.startswith(t) for t in terminal):
+            return gr.update(), gr.update(), gr.update(), gr.update(), gr.update()
+        rows, summary = get_queue_snapshot(limit=limit)
+        logs, progress, new_status = poll(task_id) if task_id else ("", 0, status)
+        return summary, rows, logs, progress, new_status
+
+    monitor_status.change(
+        fn=_on_status_change,
+        inputs=[monitor_status, monitor_task_id, queue_limit],
+        outputs=[
+            queue_summary,
+            queue_table,
+            monitor_logs,
+            monitor_progress,
+            monitor_status,
+        ],
+    )
+
+    # enforce_terms 가 완료(=큐 등록)되면 stop 버튼은 이미 켜진 상태이므로
+    # train_output_info 변경 시에는 stop 버튼을 끄는 역할만 한다
+    train_output_info.change(
+        fn=disable_stop_train_button,
+        inputs=[],
+        outputs=[train_button, stop_train_button],
+    )
+
+    # ── 큐 모니터: Stop selected 버튼 추가 ──────────────────────
+    def stop_selected_task(task_id: str, limit: int):
+        from utils.redis_util import revoke_job
+
+        if not task_id or not task_id.strip():
+            gr.Warning("선택된 task_id가 없습니다.")
+            return gr.update(), gr.update(), gr.update()
+        ok, msg = revoke_job(task_id.strip())
+        gr.Info(msg) if ok else gr.Warning(msg)
+        rows, summary = get_queue_snapshot(limit=limit)
+        return task_id, summary, rows
+
+    queue_stop.click(
+        fn=stop_selected_task,
+        inputs=[selected_task_id, queue_limit],
+        outputs=[selected_task_id, queue_summary, queue_table],
+    )
+
+    # Delete selected: log/meta 완전 삭제 후 목록에서 제거
+    def delete_selected_task(task_id: str, limit: int):
+        from utils.redis_util import delete_job
+
+        if not task_id or not task_id.strip():
+            gr.Warning("선택된 task_id가 없습니다.")
+            return gr.update(), gr.update(), gr.update()
+        ok, msg = delete_job(task_id.strip())
+        gr.Info(msg) if ok else gr.Warning(msg)
+        rows, summary = get_queue_snapshot(limit=limit)
+        return "", summary, rows
+
+    queue_delete.click(
+        fn=delete_selected_task,
+        inputs=[selected_task_id, queue_limit],
+        outputs=[selected_task_id, queue_summary, queue_table],
+    )

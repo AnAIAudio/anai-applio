@@ -322,6 +322,7 @@ def run_batch_infer_script(
 
     return f"Files from {input_folder} inferred successfully."
 
+
 # Preprocess
 def run_preprocess_script(
     model_name: str,
@@ -400,7 +401,7 @@ def run_extract_script(
 
 
 from utils.celery_task_util import celery_app
-from utils.redis_util import ACTIVE_JOBS_ZSET_KEY
+from utils.redis_util import ACTIVE_JOBS_ZSET_KEY, ALL_JOBS_ZSET_KEY
 
 
 # Train
@@ -480,6 +481,7 @@ def run_train_script(
             },
         )
         r.zadd(ACTIVE_JOBS_ZSET_KEY, {task_id: enq})
+        r.zadd(ALL_JOBS_ZSET_KEY, {task_id: enq})
 
     def push_log(line: str):
         """
@@ -2482,7 +2484,6 @@ def main():
             run_model_information_script(
                 pth_path=args.pth_path,
             )
-
 
         elif args.mode == "prerequisites":
             run_prerequisites_script(
