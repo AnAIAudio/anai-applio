@@ -57,14 +57,14 @@ with gr.Blocks(
         with gr.TabItem(i18n("Training")):
             train_tab()
 
-        with gr.Tab(i18n("Settings")):
+        with gr.TabItem(i18n("Settings")):
             settings_tab()
 
-        with gr.Tab(i18n("Preprocessing")):
+        with gr.TabItem(i18n("Preprocessing")):
             preprocessing_tab()
 
-    with gr.Tab(i18n("Release Viewer")):
-        release_viewer_tab()
+        with gr.TabItem(i18n("Release Viewer")):
+            release_viewer_tab()
 
 
 def launch_gradio(server_name: str, server_port: int) -> None:

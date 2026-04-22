@@ -44,8 +44,7 @@ def _iframe_html(url: str) -> str:
             "</div>"
         )
     return (
-        f'<iframe src="{url}" width="100%" height="900" '
-        'style="border:0;"></iframe>'
+        f'<iframe src="{url}" width="100%" height="900" ' 'style="border:0;"></iframe>'
     )
 
 
