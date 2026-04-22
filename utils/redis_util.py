@@ -172,7 +172,7 @@ def get_queue_snapshot(limit: int = 30):
     now_ts = int(time.time())
 
     # 최신 작업이 위로 오도록 내림차순
-    items = r.zrange(ALL_JOBS_ZSET_KEY, 0, limit - 1, withscores=True, rev=True)
+    items = r.zrevrange(ALL_JOBS_ZSET_KEY, 0, limit - 1, withscores=True)
 
     rows = []
     for task_id, score in items:
