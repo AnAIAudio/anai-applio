@@ -2,12 +2,13 @@ import os
 import gradio as gr
 from assets.i18n.i18n import I18nAuto
 
-
 i18n = I18nAuto()
 
 
 def batch_pack_converted(
-    temp_dir: str | None, converted_dir: str | None, converted_zip: str | None
+    temp_dir: str | None,
+    converted_dir: str | None,
+    converted_zip: str,
 ):
     """
     Convert가 완료된 후 converted_dir을 ZIP으로 묶어 다운로드 제공.
@@ -27,8 +28,12 @@ def batch_pack_converted(
     try:
         if os.path.exists(converted_zip):
             os.remove(converted_zip)
+
         with zipfile.ZipFile(
-            converted_zip, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6
+            converted_zip,
+            "w",
+            compression=zipfile.ZIP_DEFLATED,
+            compresslevel=6,
         ) as zf:
             for root, _, files in os.walk(converted_dir):
                 for f in files:

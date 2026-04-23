@@ -4,9 +4,8 @@ import regex as re
 import shutil
 import datetime
 import torch
-from core import run_infer_script, run_batch_infer_script
+from core import run_infer_script
 from tabs.inference.infer_utils.multi_infer import run_multi_infer
-from tabs.inference.infer_utils.batch_control import batch_cleanup_temp
 from assets.i18n.i18n import I18nAuto
 from rvc.lib.utils import format_title
 from tabs.settings.restart import stop_infer
@@ -70,17 +69,18 @@ def is_uuid_dir(dir_path: str) -> bool:
     try:
         uuid.UUID(base)
         return True
-    except Exception:
+    except Exception as e:
+        print(f"Invalid UUID directory: {base}, {e}")
         return False
 
 
-def normalize_path(p):
+def normalize_path(p: str):
     return os.path.normpath(p).replace("\\", "/").lower()
 
 
 # BASE model/index folder names for many latin languages (legacy: zips = models)
-MODEL_FOLDER = re.compile(r"^(?:model.{0,4}|mdl(?:s)?|weight.{0,4}|zip(?:s)?)$")
-INDEX_FOLDER = re.compile(r"^(?:ind.{0,4}|idx(?:s)?)$")
+MODEL_FOLDER = re.compile(r"^(?:model.{0,4}|mdls?|weight.{0,4}|zips?)$")
+INDEX_FOLDER = re.compile(r"^(?:ind.{0,4}|idxs?)$")
 
 
 def is_mdl_alias(name: str) -> bool:
@@ -107,9 +107,12 @@ def alias_score(path: str, want_model: bool) -> int:
         return 2 if has_idx else (1 if has_mdl else 0)
 
 
-def get_files(type="model"):
-    assert type in ("model", "index"), "Invalid type for get_files (models or index)"
-    is_model = type == "model"
+def get_files(type_name="model"):
+    assert type_name in (
+        "model",
+        "index",
+    ), "Invalid type for get_files (models or index)"
+    is_model = type_name == "model"
     exts = (".pth", ".onnx") if is_model else (".index",)
     exclude_prefixes = ("G_", "D_") if is_model else ()
     exclude_substr = None if is_model else "trained"
@@ -182,7 +185,7 @@ def get_indexes():
     return indexes_list if indexes_list else ""
 
 
-def output_path_fn(input_audio_path):
+def output_path_fn(input_audio_path: str):
     original_name_without_extension = os.path.basename(input_audio_path).rsplit(".", 1)[
         0
     ]
@@ -200,16 +203,7 @@ def change_choices(model):
     models_list = get_files("model")
     indexes_list = sorted(get_files("index"))
 
-    audio_paths = [
-        os.path.join(root, name)
-        for root, _, files in os.walk(audio_root_relative, topdown=False)
-        for name in files
-        if name.endswith(tuple(sup_audioext))
-        and root == audio_root_relative
-        and "_output" not in name
-    ]
-
-    titles = [
+    model_titles = [
         (read_text(os.path.join(root, file)), os.path.splitext(file)[0])
         for root, _, files in os.walk(model_root_relative, topdown=False)
         for file in files
@@ -227,7 +221,7 @@ def change_choices(model):
             ),
             "__type__": "update",
         },
-        {"choices": sorted(titles), "__type__": "update"},
+        {"choices": sorted(model_titles), "__type__": "update"},
     )
 
 
@@ -264,9 +258,8 @@ def save_to_wav2(upload_audio):
     return target_path, output_path_fn(target_path)
 
 
-def folders_same(
-    a: str, b: str
-) -> bool:  # Used to "pair" index and model folders based on path names
+# 경로 이름을 기준으로 인덱스 폴더와 모델 폴더를 "쌍으로" 연결하는 데 사용됩니다.
+def folders_same(a: str, b: str) -> bool:
     """
     True if:
       1) The two normalized paths are totally identical..OR
@@ -310,8 +303,8 @@ def match_index(model_file_value):
     model_folder = normalize_path(os.path.dirname(model_file_value))
     model_name = os.path.basename(model_file_value)
     base_name = os.path.splitext(model_name)[0]
-    common = re.sub(r"[_\-\.\+](?:e|s|v|V)\d.*$", "", base_name)
-    prefix_match = re.match(r"^(.*?)[_\-\.\+]", base_name)
+    common = re.sub(r"[_\-.+][esvV]\d.*$", "", base_name)
+    prefix_match = re.match(r"^(.*?)[_\-.+]", base_name)
     prefix = prefix_match.group(1) if prefix_match else None
 
     same_count = 0
@@ -455,7 +448,9 @@ def get_speakers_id(model):
     if model:
         try:
             model_data = torch.load(
-                os.path.join(now_dir, model), map_location="cpu", weights_only=True
+                os.path.join(now_dir, model),
+                map_location="cpu",
+                weights_only=True,
             )
             speakers_id = model_data.get("speakers_id")
             if speakers_id:
@@ -1260,7 +1255,7 @@ def inference_tab():
                 gr.update(visible=has_zip),
             )
 
-    MULTI_INFER_INPUTS = [
+    multi_infer_inputs = [
         zip_upload,
         model_file,
         index_file,
@@ -1324,7 +1319,7 @@ def inference_tab():
 
     convert_button_multi.click(
         fn=run_multi_and_update,
-        inputs=MULTI_INFER_INPUTS,
+        inputs=multi_infer_inputs,
         outputs=[
             vc_output_multi_info,
             vc_output_multi_zip,
@@ -1368,8 +1363,8 @@ def inference_tab():
     def toggle_visible(checkbox):
         return {"visible": checkbox, "__type__": "update"}
 
-    def toggle_visible_embedder_custom(embedder_model):
-        if embedder_model == "custom":
+    def toggle_visible_embedder_custom(use_embedder_model):
+        if use_embedder_model == "custom":
             return {"visible": True, "__type__": "update"}
         return {"visible": False, "__type__": "update"}
 
