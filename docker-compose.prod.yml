@@ -2,3 +2,52 @@ services:
   applio:
     environment:
       - RUN_ENV=production
+      - RELEASE_VIEWER_BASE_URL=${RELEASE_VIEWER_BASE_URL:-https://applio.an-ai.ooo}
+      - RELEASE_VIEWER_URL_MODE=path
+    volumes:
+      - "${HOME}/.aws:/root/.aws:ro"
+      - type: volume
+        source: nfs_applio_logs
+        target: /app/logs
+      - type: volume
+        source: nfs_applio_models
+        target: /app/rvc/models
+      - type: volume
+        source: nfs_applio_datasets
+        target: /app/assets/datasets
+      - type: volume
+        source: nfs_applio_audios
+        target: /app/assets/audios
+      - type: volume
+        source: applio_release_worktrees
+        target: /app/.release_worktrees
+
+volumes:
+  nfs_applio_logs:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: "addr=211.233.64.121,rw,nolock,soft"
+      device: ":/data/nfs/share/anai-applio-production/logs"
+
+  nfs_applio_models:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: "addr=211.233.64.121,rw,nolock,soft"
+      device: ":/data/nfs/share/anai-applio-production/rvc/models"
+
+  nfs_applio_datasets:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: "addr=211.233.64.121,rw,nolock,soft"
+      device: ":/data/nfs/share/anai-applio-production/assets/datasets"
+
+  nfs_applio_audios:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: "addr=211.233.64.121,rw,nolock,soft"
+      device: ":/data/nfs/share/anai-applio-production/assets/audios"
+

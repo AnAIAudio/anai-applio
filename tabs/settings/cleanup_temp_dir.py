@@ -5,8 +5,16 @@ import tempfile
 from typing import List, Dict
 import gradio as gr
 from assets.i18n.i18n import I18nAuto
+from tabs.inference.inference import audio_root_relative, sup_audioext
 
 i18n = I18nAuto()
+
+def delete_outputs():
+    gr.Info(f"Outputs cleared!")
+    for root, _, files in os.walk(audio_root_relative, topdown=False):
+        for name in files:
+            if name.endswith(tuple(sup_audioext)) and name.__contains__("_output"):
+                os.remove(os.path.join(root, name))
 
 
 def _on_rm_error(func, path, exc_info):
@@ -82,6 +90,9 @@ def cleanup_all_batch_zip_temp_dirs_as_text(prefix: str = "batch_zip_") -> str:
     if res["failed_paths"]:
         msg.append("실패 경로:")
         msg.extend(f" - {p}" for p in res["failed_paths"])
+
+    delete_outputs()
+
     return "\n".join(msg)
 
 
@@ -265,4 +276,3 @@ def cleanup_temp_dir_tab():
                 inputs=[logs_choices],
                 outputs=[delete_status],
             )
- 

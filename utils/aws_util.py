@@ -2,6 +2,7 @@ import os
 from typing import Literal
 import boto3
 from botocore.exceptions import NoCredentialsError
+from dotenv import load_dotenv
 
 
 def get_boto3_session(
@@ -136,3 +137,31 @@ def create_presigned_url(
         ExpiresIn=expiration,
     )
     return presigned_url
+
+
+if __name__ == "__main__":
+    load_dotenv(verbose=True)
+    run_env = os.getenv("RUN_ENV")
+    secret_info = get_aws_secret(
+        secret_name=(
+            "production/rds/anai-wave"
+            if run_env == "production"
+            else "dev/rds/anai-dev"
+        )
+    )
+    encrypt_key = secret_info["encrypt_key"]
+    salt_key = secret_info["salt_key"]
+    username = secret_info["username"]
+    password = secret_info["password"]
+    dbInstanceIdentifier = secret_info["dbInstanceIdentifier"]
+    engine = secret_info["engine"]
+    host = secret_info["host"]
+    port = secret_info["port"]
+    elevenlabs_api_key = secret_info["elevenlabs_api_key"]
+    openai_key = secret_info["openai_key"]
+    claude_key = secret_info["claude_key"]
+    grok_key = secret_info["grok_key"]
+    local_ai_key = secret_info["local_ai_key"]
+    auphonic_key = secret_info["auphonic_key"]
+    webhook_url = secret_info["webhook_url"]
+    db_name = "anai"

@@ -5,6 +5,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - "6969:6969"
+      - "7001-7010:7001-7010"
     container_name: anai-applio
     restart: always
     environment:
@@ -14,20 +15,11 @@ services:
       - RABBIT_URL=amqp://anai:ydVyM3KDkJ@rabbitmq:5672/
       - CELERY_RESULT_BACKEND=redis://redis:6379/1
       - JOB_INDEX_REDIS_URL=redis://redis:6379/2
-    volumes:
-      - "${HOME}/.aws:/root/.aws:ro"
-      - type: volume
-        source: nfs_applio_logs
-        target: /app/logs
-      - type: volume
-        source: nfs_applio_models
-        target: /app/rvc/models
-      - type: volume
-        source: nfs_applio_datasets
-        target: /app/assets/datasets
-      - type: volume
-        source: nfs_applio_audios
-        target: /app/assets/audios
+      - RELEASE_VIEWER_BASE_URL=${RELEASE_VIEWER_BASE_URL:-http://localhost}
+      - RELEASE_VIEWER_SHARED_LOGS=/app/logs
+      - RELEASE_VIEWER_SHARED_MODELS=/app/rvc/models
+      - RELEASE_VIEWER_SHARED_DATASETS=/app/assets/datasets
+      - RELEASE_VIEWER_SHARED_AUDIOS=/app/assets/audios
     shm_size: "48gb"
     depends_on:
       - rabbitmq
@@ -55,44 +47,16 @@ services:
       - rabbitmq_data:/var/lib/rabbitmq
       - ./configs/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
 
+  # port 6379 for redis
   redis:
     image: redis:7.4.7-alpine
     container_name: anai-redis
     restart: always
     command: [ "redis-server", "--appendonly", "yes" ]
-    ports:
-      - "6379:6379"
     volumes:
       - redis_data:/data
 
 volumes:
   rabbitmq_data:
   redis_data:
-
-  nfs_applio_logs:
-    driver: local
-    driver_opts:
-      type: nfs
-      o: "addr=211.233.64.121,rw,nolock,soft"
-      device: ":/data/nfs/share/anai-applio-production/logs"
-
-  nfs_applio_models:
-    driver: local
-    driver_opts:
-      type: nfs
-      o: "addr=211.233.64.121,rw,nolock,soft"
-      device: ":/data/nfs/share/anai-applio-production/rvc/models"
-
-  nfs_applio_datasets:
-    driver: local
-    driver_opts:
-      type: nfs
-      o: "addr=211.233.64.121,rw,nolock,soft"
-      device: ":/data/nfs/share/anai-applio-production/assets/datasets"
-
-  nfs_applio_audios:
-    driver: local
-    driver_opts:
-      type: nfs
-      o: "addr=211.233.64.121,rw,nolock,soft"
-      device: ":/data/nfs/share/anai-applio-production/assets/audios"
+  applio_release_worktrees:

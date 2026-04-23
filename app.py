@@ -1,16 +1,12 @@
-# Plataform config
-from rvc.lib.platform import platform_config
-
-platform_config()
-
 import gradio as gr
 import sys
 import os
-import pathlib
 import logging
-
 from typing import Any
+from rvc.lib.platform import platform_config
+from assets.i18n.i18n import I18nAuto
 
+platform_config()
 
 DEFAULT_SERVER_NAME = "0.0.0.0"
 DEFAULT_PORT = 6969
@@ -24,45 +20,16 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 now_dir = os.getcwd()
 sys.path.append(now_dir)
 
-# Zluda hijack
-import rvc.lib.zluda
-
-import os
-from dotenv import load_dotenv
-from utils.aws_util import get_aws_secret
-
-load_dotenv(verbose=True)
-run_env = os.getenv("RUN_ENV")
-secret_info = get_aws_secret(
-    secret_name=(
-        "production/rds/anai-wave" if run_env == "production" else "dev/rds/anai-dev"
-    )
-)
-encrypt_key = secret_info["encrypt_key"]
-salt_key = secret_info["salt_key"]
-username = secret_info["username"]
-password = secret_info["password"]
-dbInstanceIdentifier = secret_info["dbInstanceIdentifier"]
-engine = secret_info["engine"]
-host = secret_info["host"]
-port = secret_info["port"]
-elevenlabs_api_key = secret_info["elevenlabs_api_key"]
-openai_key = secret_info["openai_key"]
-claude_key = secret_info["claude_key"]
-grok_key = secret_info["grok_key"]
-local_ai_key = secret_info["local_ai_key"]
-auphonic_key = secret_info["auphonic_key"]
-webhook_url = secret_info["webhook_url"]
-db_name = "anai"
-
-# Import Tabs
 from tabs.inference.inference import inference_tab
 from tabs.train.train import train_tab
-from tabs.download.download import download_tab
-from tabs.voice_blender.voice_blender import voice_blender_tab
-from tabs.plugins.plugins import plugins_tab
 from tabs.settings.settings import settings_tab
 from tabs.preprocess.preprocessing import preprocessing_tab
+from tabs.release_viewer.release_viewer import release_viewer_tab
+from tabs.release_viewer.process_manager import stop_all as release_viewer_stop_all
+
+import atexit
+
+atexit.register(release_viewer_stop_all)
 
 # Run prerequisites
 from core import run_prerequisites_script
@@ -73,71 +40,35 @@ run_prerequisites_script(
     exe=True,
 )
 
-# Initialize i18n
-from assets.i18n.i18n import I18nAuto
-
 i18n = I18nAuto()
 
-# Start Discord presence if enabled
-from tabs.settings.sections.presence import load_config_presence
-
-if load_config_presence():
-    from assets.discord_presence import RPCManager
-
-    RPCManager.start_presence()
-
-# Check installation
-import assets.installation_checker as installation_checker
-
-installation_checker.check_installation()
-
-# Load theme
-import assets.themes.loadThemes as loadThemes
-
-my_applio = loadThemes.load_theme() or "ParityError/Interstellar"
 client_mode = "--client" in sys.argv
 
-# Define Gradio interface
 with gr.Blocks(
-    theme=gr.themes.Glass(),
-    title="Applio",
-    css="footer{display:none !important}",
-    js=(
-        pathlib.Path(os.path.join(now_dir, "tabs", "realtime", "main.js")).read_text()
-        if client_mode
-        else None
-    ),
+    theme=gr.themes.Base(),
+    title="AnAI-Applio",
 ) as Applio:
     gr.Markdown("# AnAI Applio")
-    gr.Markdown(
-        i18n(
-            "A simple, high-quality voice conversion tool focused on ease of use and performance."
-        )
-    )
 
-    with gr.Tab(i18n("Inference")):
-        inference_tab()
+    with gr.Tabs():
+        with gr.TabItem(i18n("Inference")):
+            inference_tab()
 
-    with gr.Tab(i18n("Training")):
-        train_tab()
+        with gr.TabItem(i18n("Training")):
+            train_tab()
 
-    with gr.Tab(i18n("Settings")):
-        settings_tab()
+        with gr.TabItem(i18n("Settings")):
+            settings_tab()
 
-    with gr.Tab(i18n("Preprocessing")):
-        preprocessing_tab()
+        with gr.TabItem(i18n("Preprocessing")):
+            preprocessing_tab()
 
-    gr.Markdown(
-        """
-    <div style="text-align: center; font-size: 0.9em; text-color: a3a3a3;">
-    By using Applio, you agree to comply with ethical and legal standards, respect intellectual property and privacy rights, avoid harmful or prohibited uses, and accept full responsibility for any outcomes, while Applio disclaims liability and reserves the right to amend these terms.
-    </div>
-    """
-    )
+        with gr.TabItem(i18n("Release Viewer")):
+            release_viewer_tab()
 
 
 def launch_gradio(server_name: str, server_port: int) -> None:
-    app, _, _ = Applio.launch(
+    Applio.launch(
         favicon_path="assets/anai_favicon.ico",
         share="--share" in sys.argv,
         inbrowser="--open" in sys.argv,
@@ -145,15 +76,6 @@ def launch_gradio(server_name: str, server_port: int) -> None:
         server_port=server_port,
         prevent_thread_lock=client_mode,
     )
-
-    if client_mode:
-        import time
-        from rvc.realtime.client import app as fastapi_app
-
-        app.mount("/api", fastapi_app)
-
-        while True:
-            time.sleep(5)
 
 
 def get_value_from_args(key: str, default: Any = None) -> Any:

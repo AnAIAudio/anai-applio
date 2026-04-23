@@ -15,7 +15,7 @@ from core import (
 )
 from rvc.configs.config import get_gpu_info, get_number_of_gpus, max_vram_gpu
 from rvc.lib.utils import format_title
-from tabs.settings.sections.restart import stop_train
+from tabs.settings.restart import stop_train
 
 i18n = I18nAuto()
 now_dir = os.getcwd()
@@ -367,162 +367,157 @@ from utils.redis_util import poll, get_queue_snapshot
 
 # Train Tab
 def train_tab():
-    # 큐 모니터
-    with gr.Accordion(i18n("Queue Monitor"), open=False):
-        with gr.Row():
-            queue_auto = gr.Checkbox(
-                label=i18n("Auto refresh"),
-                value=False,
-                interactive=True,
-            )
-            queue_limit = gr.Slider(
-                5,
-                100,
-                value=30,
-                step=1,
-                label=i18n("Max rows"),
-                interactive=True,
-            )
-            queue_refresh = gr.Button(i18n("Refresh now"))
+    # 큐 모니터 + 학습 모니터: 2열 나란히 배치
+    with gr.Row():
+        # ── 왼쪽: 대기열 모니터 ──────────────────────────────────
+        with gr.Column():
+            gr.Markdown(f"### {i18n('Queue Monitor')}")
+            with gr.Row():
+                queue_auto = gr.Checkbox(
+                    label=i18n("Auto refresh"),
+                    value=False,
+                    interactive=True,
+                )
+                queue_limit = gr.Slider(
+                    5,
+                    100,
+                    value=30,
+                    step=1,
+                    label=i18n("Max rows"),
+                    interactive=True,
+                )
+                queue_refresh = gr.Button(i18n("Refresh now"))
 
-            queue_delete = gr.Button(i18n("Delete selected"), variant="stop")
-
-        queue_summary = gr.Textbox(
-            label=i18n("Summary"),
-            value="",
-            interactive=False,
-        )
-
-        selected_task_id = gr.Textbox(
-            label=i18n("Selected task_id"),
-            value="",
-            interactive=False,
-        )
-
-        queue_table = gr.Dataframe(
-            headers=[
-                "model_name",
-                "task_id",
-                "state",
-                "progress(%)",
-                "total_epoch",
-                "age_sec",
-            ],
-            datatype=["str", "str", "str", "number", "number", "str", "number"],
-            row_count=0,
-            col_count=(6, "fixed"),
-            interactive=True,
-        )
-
-        def _queue_refresh(limit: int):
-            rows, summary = get_queue_snapshot(limit=limit)
-            return summary, rows
-
-        queue_refresh.click(
-            fn=_queue_refresh,
-            inputs=[queue_limit],
-            outputs=[queue_summary, queue_table],
-        )
-
-        # 테이블 행 클릭 시: 첫 번째 컬럼(task_id)을 selected_task_id에 세팅
-        def _on_queue_select(evt: gr.SelectData):
-            return str(evt.value or "")
-
-        queue_table.select(
-            fn=_on_queue_select,
-            inputs=[],
-            outputs=[selected_task_id],
-        )
-
-        # Delete 버튼: Redis에서 job log/meta 삭제 + active zset 제거 후 테이블 갱신
-        def delete_selected_task(task_id: str, limit: int):
-            from utils.redis_util import delete_job
-
-            ok, msg = delete_job(task_id)
-            gr.Info(msg) if ok else gr.Warning(msg)
-
-            summary, rows = _queue_refresh(limit)
-            # 삭제했으니 선택도 비워줌
-            return "", summary, rows
-
-        queue_delete.click(
-            fn=delete_selected_task,
-            inputs=[selected_task_id, queue_limit],
-            outputs=[selected_task_id, queue_summary, queue_table],
-        )
-
-        queue_timer = gr.Timer(value=30.0)
-
-        def _queue_tick(enabled: bool, limit: int):
-            if not enabled:
-                return gr.update(), gr.update()
-            return _queue_refresh(limit)
-
-        queue_timer.tick(
-            fn=_queue_tick,
-            inputs=[queue_auto, queue_limit],
-            outputs=[queue_summary, queue_table],
-        )
-
-    # 현재 훈련 진행 상황
-    with gr.Accordion(i18n("Training Monitor"), open=True):
-        with gr.Row():
-            monitor_task_id = gr.Textbox(
-                label=i18n("Task ID"),
-                placeholder=i18n("붙여넣기: celery task_id"),
-                interactive=True,
-            )
-            monitor_auto = gr.Checkbox(
-                label=i18n("Auto refresh"),
-                value=True,
-                interactive=True,
-            )
-            monitor_refresh = gr.Button(i18n("Refresh now"))
-
-        with gr.Row():
-            monitor_status = gr.Textbox(
-                label=i18n("Celery Status"),
+            queue_summary = gr.Textbox(
+                label=i18n("Summary"),
                 value="",
                 interactive=False,
             )
-            monitor_progress = gr.Slider(
-                minimum=0,
-                maximum=100,
-                step=1,
-                label=i18n("Progress (%)"),
-                value=0,
+
+            selected_task_id = gr.Textbox(
+                label=i18n("Selected task_id"),
+                value="",
                 interactive=False,
             )
 
-        monitor_logs = gr.Textbox(
-            label=i18n("Logs (recent)"),
-            value="",
-            lines=18,
-            max_lines=30,
-            interactive=False,
-        )
+            queue_table = gr.Dataframe(
+                headers=[
+                    "model_name",
+                    "task_id",
+                    "state",
+                    "progress(%)",
+                    "total_epoch",
+                    "age_sec",
+                ],
+                datatype=["str", "str", "str", "number", "number", "number"],
+                row_count=0,
+                col_count=(6, "fixed"),
+                interactive=True,
+            )
 
-        # 수동 갱신
-        monitor_refresh.click(
-            fn=poll,
-            inputs=[monitor_task_id],
-            outputs=[monitor_logs, monitor_progress, monitor_status],
-        )
+            with gr.Row():
+                queue_stop = gr.Button(i18n("Stop selected"), variant="stop")
+                queue_delete = gr.Button(i18n("Delete selected"))
 
-        # 자동 폴링 (예: 2초마다)
-        monitor_timer = gr.Timer(value=2.0)
+        # ── 오른쪽: 학습 모니터 (기본 접힘) ─────────────────────
+        with gr.Column():
+            gr.Markdown(f"### {i18n('Training Monitor')}")
+            with gr.Row():
+                monitor_task_id = gr.Textbox(
+                    label=i18n("Task ID"),
+                    placeholder=i18n("훈련 시작 시 자동 입력"),
+                    interactive=True,
+                )
+                monitor_auto = gr.Checkbox(
+                    label=i18n("Auto refresh"),
+                    value=True,
+                    interactive=True,
+                )
+                monitor_refresh = gr.Button(i18n("Refresh now"))
 
-        def _poll_if_enabled(task_id: str, enabled: bool):
-            if not enabled:
-                # 자동 갱신 OFF면 값 유지 (Gradio 출력 개수 맞춰야 함)
-                return gr.update(), gr.update(), gr.update()
-            return poll(task_id)
+            with gr.Row():
+                monitor_status = gr.Textbox(
+                    label=i18n("Celery Status"),
+                    value="",
+                    interactive=False,
+                )
+                monitor_progress = gr.Slider(
+                    minimum=0,
+                    maximum=100,
+                    step=1,
+                    label=i18n("Progress (%)"),
+                    value=0,
+                    interactive=False,
+                )
 
-        monitor_timer.tick(
-            fn=_poll_if_enabled,
-            inputs=[monitor_task_id, monitor_auto],
-            outputs=[monitor_logs, monitor_progress, monitor_status],
-        )
+            monitor_logs = gr.Textbox(
+                label=i18n("Logs (recent)"),
+                value="",
+                lines=18,
+                max_lines=30,
+                interactive=False,
+            )
+
+    # ── 이벤트: 큐 모니터 ───────────────────────────────────────
+    def _queue_refresh(limit: int):
+        rows, summary = get_queue_snapshot(limit=limit)
+        return summary, rows
+
+    queue_refresh.click(
+        fn=_queue_refresh,
+        inputs=[queue_limit],
+        outputs=[queue_summary, queue_table],
+    )
+
+    # 테이블 행 클릭 시: task_id 컬럼(index 1)을 selected_task_id에 세팅
+    def _on_queue_select(evt: gr.SelectData, data):
+        try:
+            row_idx = evt.index[0]
+            task_id = str(data.iloc[row_idx, 1])
+            return task_id
+        except Exception:
+            return str(evt.value or "")
+
+    queue_table.select(
+        fn=_on_queue_select,
+        inputs=[queue_table],
+        outputs=[selected_task_id],
+    )
+
+    queue_timer = gr.Timer(value=30.0)
+
+    def _queue_tick(enabled: bool, limit: int):
+        if not enabled:
+            return gr.update(), gr.update()
+        return _queue_refresh(limit)
+
+    queue_timer.tick(
+        fn=_queue_tick,
+        inputs=[queue_auto, queue_limit],
+        outputs=[queue_summary, queue_table],
+    )
+
+    # ── 이벤트: 학습 모니터 ─────────────────────────────────────
+    # 수동 갱신
+    monitor_refresh.click(
+        fn=poll,
+        inputs=[monitor_task_id],
+        outputs=[monitor_logs, monitor_progress, monitor_status],
+    )
+
+    # 자동 폴링 (2초마다)
+    monitor_timer = gr.Timer(value=2.0)
+
+    def _poll_if_enabled(task_id: str, enabled: bool):
+        if not enabled:
+            return gr.update(), gr.update(), gr.update()
+        return poll(task_id)
+
+    monitor_timer.tick(
+        fn=_poll_if_enabled,
+        inputs=[monitor_task_id, monitor_auto],
+        outputs=[monitor_logs, monitor_progress, monitor_status],
+    )
 
     # Model settings section
     with gr.Accordion(i18n("Model Settings")):
@@ -600,22 +595,10 @@ def train_tab():
                     )
     # Preprocess section
     with gr.Accordion(i18n("Preprocess")):
-        dataset_path = gr.Dropdown(
-            label=i18n("Dataset Path"),
-            info=i18n("Path to the dataset folder."),
-            # placeholder=i18n("Enter dataset path"),
-            choices=get_datasets_list(),
-            allow_custom_value=True,
-            interactive=True,
-        )
-        dataset_creator = gr.Checkbox(
-            label=i18n("Dataset Creator"),
-            value=False,
-            interactive=True,
-            visible=True,
-        )
-        with gr.Column(visible=False) as dataset_creator_settings:
-            with gr.Accordion(i18n("Dataset Creator")):
+        with gr.Row():
+            # ── 왼쪽: 데이터셋 만들기 ────────────────────────────
+            with gr.Column():
+                gr.Markdown(f"### {i18n('Dataset Creator')}")
                 dataset_name = gr.Textbox(
                     label=i18n("Dataset Name"),
                     info=i18n("Name of the new dataset."),
@@ -627,109 +610,120 @@ def train_tab():
                     type="filepath",
                     interactive=True,
                 )
-        refresh = gr.Button(i18n("Refresh"))
 
-        with gr.Accordion(i18n("Advanced Settings"), open=False):
-            cut_preprocess = gr.Radio(
-                label=i18n("Audio cutting"),
-                info=i18n(
-                    "Audio file slicing method: Select 'Skip' if the files are already pre-sliced, 'Simple' if excessive silence has already been removed from the files, or 'Automatic' for automatic silence detection and slicing around it."
-                ),
-                choices=["Skip", "Simple", "Automatic"],
-                value="Automatic",
-                interactive=True,
-            )
-            with gr.Row():
-                chunk_len = gr.Slider(
-                    0.5,
-                    5.0,
-                    3.0,
-                    step=0.1,
-                    label=i18n("Chunk length (sec)"),
-                    info=i18n("Length of the audio slice for 'Simple' method."),
+            # ── 오른쪽: 데이터셋 전처리 ──────────────────────────
+            with gr.Column():
+                gr.Markdown(f"### {i18n('Dataset Preprocessing')}")
+                dataset_path = gr.Dropdown(
+                    label=i18n("Dataset Path"),
+                    info=i18n("Path to the dataset folder."),
+                    choices=get_datasets_list(),
+                    allow_custom_value=True,
                     interactive=True,
                 )
-                overlap_len = gr.Slider(
-                    0.0,
-                    0.4,
-                    0.3,
-                    step=0.1,
-                    label=i18n("Overlap length (sec)"),
-                    info=i18n(
-                        "Length of the overlap between slices for 'Simple' method."
-                    ),
-                    interactive=True,
+                refresh = gr.Button(i18n("Refresh"))
+
+                with gr.Accordion(i18n("Advanced Settings"), open=False):
+                    cut_preprocess = gr.Radio(
+                        label=i18n("Audio cutting"),
+                        info=i18n(
+                            "Audio file slicing method: Select 'Skip' if the files are already pre-sliced, 'Simple' if excessive silence has already been removed from the files, or 'Automatic' for automatic silence detection and slicing around it."
+                        ),
+                        choices=["Skip", "Simple", "Automatic"],
+                        value="Automatic",
+                        interactive=True,
+                    )
+                    with gr.Row():
+                        chunk_len = gr.Slider(
+                            0.5,
+                            5.0,
+                            3.0,
+                            step=0.1,
+                            label=i18n("Chunk length (sec)"),
+                            info=i18n("Length of the audio slice for 'Simple' method."),
+                            interactive=True,
+                        )
+                        overlap_len = gr.Slider(
+                            0.0,
+                            0.4,
+                            0.3,
+                            step=0.1,
+                            label=i18n("Overlap length (sec)"),
+                            info=i18n(
+                                "Length of the overlap between slices for 'Simple' method."
+                            ),
+                            interactive=True,
+                        )
+
+                    with gr.Row():
+                        process_effects = gr.Checkbox(
+                            label=i18n("Noise filter"),
+                            info=i18n(
+                                "It's recommended to deactivate this option if your dataset has already been processed."
+                            ),
+                            value=True,
+                            interactive=True,
+                            visible=True,
+                        )
+
+                        normalization_mode = gr.Radio(
+                            label=i18n("Normalization mode"),
+                            info=i18n(
+                                "Audio normalization: Select 'none' if the files are already normalized, 'pre' to normalize the entire input file at once, or 'post' to normalize each slice individually."
+                            ),
+                            choices=["none", "pre", "post"],
+                            value="none",
+                            interactive=True,
+                            visible=True,
+                        )
+
+                        noise_reduction = gr.Checkbox(
+                            label=i18n("Noise Reduction"),
+                            info=i18n(
+                                "It's recommended keep deactivate this option if your dataset has already been processed."
+                            ),
+                            value=False,
+                            interactive=True,
+                            visible=True,
+                        )
+                    clean_strength = gr.Slider(
+                        minimum=0,
+                        maximum=1,
+                        label=i18n("Noise Reduction Strength"),
+                        info=i18n(
+                            "Set the clean-up level to the audio you want, the more you increase it the more it will clean up, but it is possible that the audio will be more compressed."
+                        ),
+                        visible=False,
+                        value=0.5,
+                        interactive=True,
+                    )
+                preprocess_output_info = gr.Textbox(
+                    label=i18n("Output Information"),
+                    info=i18n("The output information will be displayed here."),
+                    value="",
+                    max_lines=8,
+                    interactive=False,
                 )
 
-            with gr.Row():
-                process_effects = gr.Checkbox(
-                    label=i18n("Noise filter"),
-                    info=i18n(
-                        "It's recommended to deactivate this option if your dataset has already been processed."
-                    ),
-                    value=True,
-                    interactive=True,
-                    visible=True,
-                )
-
-                normalization_mode = gr.Radio(
-                    label=i18n("Normalization mode"),
-                    info=i18n(
-                        "Audio normalization: Select 'none' if the files are already normalized, 'pre' to normalize the entire input file at once, or 'post' to normalize each slice individually."
-                    ),
-                    choices=["none", "pre", "post"],
-                    value="none",
-                    interactive=True,
-                    visible=True,
-                )
-
-                noise_reduction = gr.Checkbox(
-                    label=i18n("Noise Reduction"),
-                    info=i18n(
-                        "It's recommended keep deactivate this option if your dataset has already been processed."
-                    ),
-                    value=False,
-                    interactive=True,
-                    visible=True,
-                )
-            clean_strength = gr.Slider(
-                minimum=0,
-                maximum=1,
-                label=i18n("Noise Reduction Strength"),
-                info=i18n(
-                    "Set the clean-up level to the audio you want, the more you increase it the more it will clean up, but it is possible that the audio will be more compressed."
-                ),
-                visible=False,
-                value=0.5,
-                interactive=True,
-            )
-        preprocess_output_info = gr.Textbox(
-            label=i18n("Output Information"),
-            info=i18n("The output information will be displayed here."),
-            value="",
-            max_lines=8,
-            interactive=False,
-        )
-
-        with gr.Row():
-            preprocess_button = gr.Button(i18n("Preprocess Dataset"))
-            preprocess_button.click(
-                fn=run_preprocess_script,
-                inputs=[
-                    model_name,
-                    dataset_path,
-                    sampling_rate,
-                    cpu_cores,
-                    cut_preprocess,
-                    process_effects,
-                    noise_reduction,
-                    clean_strength,
-                    chunk_len,
-                    overlap_len,
-                    normalization_mode,
-                ],
-                outputs=[preprocess_output_info],
-            )
+                with gr.Row():
+                    preprocess_button = gr.Button(i18n("Preprocess Dataset"))
+                    preprocess_button.click(
+                        fn=run_preprocess_script,
+                        inputs=[
+                            model_name,
+                            dataset_path,
+                            sampling_rate,
+                            cpu_cores,
+                            cut_preprocess,
+                            process_effects,
+                            noise_reduction,
+                            clean_strength,
+                            chunk_len,
+                            overlap_len,
+                            normalization_mode,
+                        ],
+                        outputs=[preprocess_output_info],
+                    )
 
     # Extract section
     with gr.Accordion(i18n("Extract")):
@@ -974,11 +968,11 @@ def train_tab():
                 interactive=True,
             )
 
-        def enforce_terms(terms_accepted, *args):
+        def enforce_terms(terms_accepted, limit, *args):
             if not terms_accepted:
                 message = "You must agree to the Terms of Use to proceed."
                 gr.Info(message)
-                return message
+                return message, "", gr.update(), gr.update()
 
             async_result = run_train_script.delay(*args)
 
@@ -990,8 +984,22 @@ def train_tab():
             except Exception:
                 pass
 
-            return f"Training job queued. task_id={async_result.id}"
-            # return run_train_script(*args)
+            task_id = async_result.id
+
+            # 대기열 목록 새로고침
+            summary, rows = _queue_refresh(limit)
+
+            return (
+                f"Training job queued. task_id={task_id}",
+                task_id,
+                summary,
+                rows,
+                {"visible": False, "__type__": "update"},
+                {
+                    "visible": True,
+                    "__type__": "update",
+                },
+            )
 
         terms_checkbox = gr.Checkbox(
             label=i18n("I agree to the terms of use"),
@@ -1011,38 +1019,33 @@ def train_tab():
 
         with gr.Row():
             train_button = gr.Button(i18n("Start Training"))
-            train_button.click(
-                fn=enforce_terms,
-                inputs=[
-                    terms_checkbox,
-                    model_name,
-                    save_every_epoch,
-                    save_only_latest,
-                    save_every_weights,
-                    total_epoch,
-                    sampling_rate,
-                    batch_size,
-                    gpu,
-                    overtraining_detector,
-                    overtraining_threshold,
-                    pretrained,
-                    cleanup,
-                    index_algorithm,
-                    cache_dataset_in_gpu,
-                    custom_pretrained,
-                    g_pretrained_path,
-                    d_pretrained_path,
-                    vocoder,
-                    checkpointing,
-                ],
-                outputs=[train_output_info],
+
+            stop_train_button = gr.Button(
+                i18n("Stop Training"),
+                visible=False,
+                variant="stop",
             )
 
-            stop_train_button = gr.Button(i18n("Stop Training"), visible=False)
+            def handle_stop_train(task_id: str, model_name_val: str):
+                from utils.redis_util import revoke_job
+
+                # 1) Celery task revoke (task_id가 있을 때 우선)
+                if task_id and task_id.strip():
+                    ok, msg = revoke_job(task_id.strip())
+                    if ok:
+                        gr.Info(msg)
+                    else:
+                        gr.Warning(f"Celery revoke 실패: {msg}")
+
+                # 2) 로컬 PID kill (구버전 호환 / fallback)
+                stop_train(model_name_val)
+
+                return i18n("Training stop requested.")
+
             stop_train_button.click(
-                fn=stop_train,
-                inputs=[model_name],
-                outputs=[],
+                fn=handle_stop_train,
+                inputs=[monitor_task_id, model_name],
+                outputs=[train_output_info],
             )
 
             index_button = gr.Button(i18n("Generate Index"))
@@ -1060,17 +1063,12 @@ def train_tab():
                     "The button 'Upload' is only for google colab: Uploads the exported files to the ApplioExported folder in your Google Drive."
                 )
             )
-        # 프로젝트 별로 파일 압축해서 한꺼번에 다운로드
+        gr.Markdown(
+            i18n(
+                "Exports the **pth** and **index** files for the currently selected model as a ZIP archive (folder structure preserved)."
+            )
+        )
         with gr.Row():
-            with gr.Column():
-                zip_dropdown_export = gr.Dropdown(
-                    label=i18n("Pth file"),
-                    info=i18n("Select the project to be exported"),
-                    choices=get_project_list(),
-                    value=None,
-                    interactive=True,
-                    allow_custom_value=True,
-                )
             with gr.Column():
                 zip_file_export = gr.File(
                     label=i18n("Exported ZIP file"),
@@ -1078,231 +1076,281 @@ def train_tab():
                     value=None,
                     interactive=False,
                 )
-
-        with gr.Row():
             with gr.Column():
-                pth_file_export = gr.File(
-                    label=i18n("Exported Pth file"),
-                    type="filepath",
-                    value=None,
-                    interactive=False,
-                )
-                pth_dropdown_export = gr.Dropdown(
-                    label=i18n("Pth file"),
-                    info=i18n("Select the pth file to be exported"),
-                    choices=get_pth_list(),
-                    value=None,
-                    interactive=True,
-                    allow_custom_value=True,
-                )
-            with gr.Column():
-                index_file_export = gr.File(
-                    label=i18n("Exported Index File"),
-                    type="filepath",
-                    value=None,
-                    interactive=False,
-                )
-                index_dropdown_export = gr.Dropdown(
-                    label=i18n("Index File"),
-                    info=i18n("Select the index file to be exported"),
-                    choices=get_index_list(),
-                    value=None,
-                    interactive=True,
-                    allow_custom_value=True,
-                )
-        with gr.Row():
-            with gr.Column():
-                refresh_export = gr.Button(i18n("Refresh"))
+                export_zip_button = gr.Button(i18n("Download ZIP"), variant="primary")
                 if not os.name == "nt":
-                    upload_exported = gr.Button(i18n("Upload"))
-                    upload_exported.click(
-                        fn=upload_to_google_drive,
-                        inputs=[pth_dropdown_export, index_dropdown_export],
-                        outputs=[],
+                    upload_exported = gr.Button(i18n("Upload to Google Drive"))
+
+        def export_model_zip_by_name(name: str):
+            """model_name으로 project_path를 찾아 zip 생성 후 반환."""
+            if not name:
+                gr.Warning(i18n("Please set a model name first."))
+                return None
+            project_path = os.path.relpath(os.path.join(models_path, name), now_dir)
+            if not os.path.isdir(os.path.join(now_dir, project_path)):
+                gr.Warning(i18n(f"Model folder not found: {name}"))
+                return None
+            return export_project_zip(project_path)
+
+        export_zip_button.click(
+            fn=export_model_zip_by_name,
+            inputs=[model_name],
+            outputs=[zip_file_export],
+        )
+
+        if not os.name == "nt":
+            upload_exported.click(
+                fn=lambda name: upload_to_google_drive(
+                    *(
+                        [
+                            os.path.join(now_dir, f)
+                            for dirpath, _, filenames in os.walk(
+                                os.path.join(models_path, name)
+                            )
+                            for f in filenames
+                            if f.endswith(".pth")
+                            or (f.endswith(".index") and "trained" not in f)
+                        ][:2]
+                        if name
+                        else (None, None)
                     )
-
-            def toggle_visible(checkbox):
-                return {"visible": checkbox, "__type__": "update"}
-
-            def toggle_pretrained(pretrained, custom_pretrained):
-                if custom_pretrained == False:
-                    return {"visible": pretrained, "__type__": "update"}, {
-                        "visible": False,
-                        "__type__": "update",
-                    }
-                else:
-                    return {"visible": pretrained, "__type__": "update"}, {
-                        "visible": pretrained,
-                        "__type__": "update",
-                    }
-
-            def enable_stop_train_button():
-                return {"visible": False, "__type__": "update"}, {
-                    "visible": True,
-                    "__type__": "update",
-                }
-
-            def disable_stop_train_button():
-                return {"visible": True, "__type__": "update"}, {
-                    "visible": False,
-                    "__type__": "update",
-                }
-
-            def download_prerequisites():
-                gr.Info(
-                    "Checking for prerequisites with pitch guidance... Missing files will be downloaded. If you already have them, this step will be skipped."
-                )
-                run_prerequisites_script(
-                    pretraineds_hifigan=True,
-                    models=False,
-                    exe=False,
-                )
-                gr.Info(
-                    "Prerequisites check complete. Missing files were downloaded, and you may now start preprocessing."
-                )
-
-            def toggle_visible_embedder_custom(embedder_model):
-                if embedder_model == "custom":
-                    return {"visible": True, "__type__": "update"}
-                return {"visible": False, "__type__": "update"}
-
-            def toggle_architecture(architecture):
-                if architecture == "Applio":
-                    return {
-                        "choices": ["32000", "40000", "48000"],
-                        "__type__": "update",
-                    }, {
-                        "interactive": True,
-                        "__type__": "update",
-                    }
-                else:
-                    return {
-                        "choices": ["32000", "40000", "48000"],
-                        "__type__": "update",
-                        "value": "40000",
-                    }, {"interactive": False, "__type__": "update", "value": "HiFi-GAN"}
-
-            def toggle_vocoder(vocoder):
-                if vocoder == "HiFi-GAN":
-                    return {
-                        "choices": ["32000", "40000", "48000"],
-                        "__type__": "update",
-                        "value": "40000",
-                    }
-                else:
-                    return {
-                        "choices": ["24000", "32000"],
-                        "__type__": "update",
-                        "value": "32000",
-                    }
-
-            def update_slider_visibility(noise_reduction):
-                return gr.update(visible=noise_reduction)
-
-            noise_reduction.change(
-                fn=update_slider_visibility,
-                inputs=noise_reduction,
-                outputs=clean_strength,
-            )
-            architecture.change(
-                fn=toggle_architecture,
-                inputs=[architecture],
-                outputs=[sampling_rate, vocoder],
-            )
-            vocoder.change(
-                fn=toggle_vocoder,
-                inputs=[vocoder],
-                outputs=[sampling_rate],
-            )
-            refresh.click(
-                fn=refresh_models_and_datasets,
-                inputs=[],
-                outputs=[model_name, dataset_path],
-            )
-            dataset_creator.change(
-                fn=toggle_visible,
-                inputs=[dataset_creator],
-                outputs=[dataset_creator_settings],
-            )
-            upload_audio_dataset.upload(
-                fn=save_drop_dataset_audio,
-                inputs=[upload_audio_dataset, dataset_name],
-                outputs=[upload_audio_dataset, dataset_path],
-            )
-            embedder_model.change(
-                fn=toggle_visible_embedder_custom,
-                inputs=[embedder_model],
-                outputs=[embedder_custom],
-            )
-            embedder_model.change(
-                fn=toggle_visible_embedder_custom,
-                inputs=[embedder_model],
-                outputs=[embedder_custom],
-            )
-            move_files_button.click(
-                fn=create_folder_and_move_files,
-                inputs=[folder_name_input, bin_file_upload, config_file_upload],
+                ),
+                inputs=[model_name],
                 outputs=[],
             )
-            refresh_embedders_button.click(
-                fn=refresh_embedders_folders, inputs=[], outputs=[embedder_model_custom]
-            )
-            pretrained.change(
-                fn=toggle_pretrained,
-                inputs=[pretrained, custom_pretrained],
-                outputs=[custom_pretrained, pretrained_custom_settings],
-            )
-            custom_pretrained.change(
-                fn=toggle_visible,
-                inputs=[custom_pretrained],
-                outputs=[pretrained_custom_settings],
-            )
-            refresh_custom_pretaineds_button.click(
-                fn=refresh_custom_pretraineds,
-                inputs=[],
-                outputs=[g_pretrained_path, d_pretrained_path],
-            )
-            upload_pretrained.upload(
-                fn=save_drop_model,
-                inputs=[upload_pretrained],
-                outputs=[upload_pretrained],
-            )
-            overtraining_detector.change(
-                fn=toggle_visible,
-                inputs=[overtraining_detector],
-                outputs=[overtraining_settings],
-            )
-            train_button.click(
-                fn=enable_stop_train_button,
-                inputs=[],
-                outputs=[train_button, stop_train_button],
-            )
-            train_output_info.change(
-                fn=disable_stop_train_button,
-                inputs=[],
-                outputs=[train_button, stop_train_button],
-            )
-            pth_dropdown_export.change(
-                fn=export_pth,
-                inputs=[pth_dropdown_export],
-                outputs=[pth_file_export],
-            )
-            index_dropdown_export.change(
-                fn=export_index,
-                inputs=[index_dropdown_export],
-                outputs=[index_file_export],
-            )
-            zip_dropdown_export.change(
-                fn=export_project_zip,
-                inputs=[zip_dropdown_export],
-                outputs=[zip_file_export],
-            )
-            refresh_export.click(
-                fn=refresh_pth_and_index_list,
-                inputs=[],
-                outputs=[
-                    pth_dropdown_export,
-                    index_dropdown_export,
-                    zip_dropdown_export,
-                ],
-            )
+
+    # ── helper 함수 & 이벤트 바인딩 ─────────────────────────────
+    def toggle_visible(checkbox):
+        return {"visible": checkbox, "__type__": "update"}
+
+    def toggle_pretrained(pretrained, custom_pretrained):
+        if custom_pretrained == False:
+            return {"visible": pretrained, "__type__": "update"}, {
+                "visible": False,
+                "__type__": "update",
+            }
+        else:
+            return {"visible": pretrained, "__type__": "update"}, {
+                "visible": pretrained,
+                "__type__": "update",
+            }
+
+    def disable_stop_train_button():
+        return {"visible": True, "__type__": "update"}, {
+            "visible": False,
+            "__type__": "update",
+        }
+
+    def download_prerequisites():
+        gr.Info(
+            "Checking for prerequisites with pitch guidance... Missing files will be downloaded. If you already have them, this step will be skipped."
+        )
+        run_prerequisites_script(
+            pretraineds_hifigan=True,
+            models=False,
+            exe=False,
+        )
+        gr.Info(
+            "Prerequisites check complete. Missing files were downloaded, and you may now start preprocessing."
+        )
+
+    def toggle_visible_embedder_custom(embedder_model):
+        if embedder_model == "custom":
+            return {"visible": True, "__type__": "update"}
+        return {"visible": False, "__type__": "update"}
+
+    def toggle_architecture(architecture):
+        if architecture == "Applio":
+            return {
+                "choices": ["32000", "40000", "48000"],
+                "__type__": "update",
+            }, {
+                "interactive": True,
+                "__type__": "update",
+            }
+        else:
+            return {
+                "choices": ["32000", "40000", "48000"],
+                "__type__": "update",
+                "value": "40000",
+            }, {"interactive": False, "__type__": "update", "value": "HiFi-GAN"}
+
+    def toggle_vocoder(vocoder):
+        if vocoder == "HiFi-GAN":
+            return {
+                "choices": ["32000", "40000", "48000"],
+                "__type__": "update",
+                "value": "40000",
+            }
+        else:
+            return {
+                "choices": ["24000", "32000"],
+                "__type__": "update",
+                "value": "32000",
+            }
+
+    def update_slider_visibility(noise_reduction):
+        return gr.update(visible=noise_reduction)
+
+    noise_reduction.change(
+        fn=update_slider_visibility,
+        inputs=noise_reduction,
+        outputs=clean_strength,
+    )
+    architecture.change(
+        fn=toggle_architecture,
+        inputs=[architecture],
+        outputs=[sampling_rate, vocoder],
+    )
+    vocoder.change(
+        fn=toggle_vocoder,
+        inputs=[vocoder],
+        outputs=[sampling_rate],
+    )
+    refresh.click(
+        fn=refresh_models_and_datasets,
+        inputs=[],
+        outputs=[model_name, dataset_path],
+    )
+    upload_audio_dataset.upload(
+        fn=save_drop_dataset_audio,
+        inputs=[upload_audio_dataset, dataset_name],
+        outputs=[upload_audio_dataset, dataset_path],
+    )
+    embedder_model.change(
+        fn=toggle_visible_embedder_custom,
+        inputs=[embedder_model],
+        outputs=[embedder_custom],
+    )
+    move_files_button.click(
+        fn=create_folder_and_move_files,
+        inputs=[folder_name_input, bin_file_upload, config_file_upload],
+        outputs=[],
+    )
+    refresh_embedders_button.click(
+        fn=refresh_embedders_folders, inputs=[], outputs=[embedder_model_custom]
+    )
+    pretrained.change(
+        fn=toggle_pretrained,
+        inputs=[pretrained, custom_pretrained],
+        outputs=[custom_pretrained, pretrained_custom_settings],
+    )
+    custom_pretrained.change(
+        fn=toggle_visible,
+        inputs=[custom_pretrained],
+        outputs=[pretrained_custom_settings],
+    )
+    refresh_custom_pretaineds_button.click(
+        fn=refresh_custom_pretraineds,
+        inputs=[],
+        outputs=[g_pretrained_path, d_pretrained_path],
+    )
+    upload_pretrained.upload(
+        fn=save_drop_model,
+        inputs=[upload_pretrained],
+        outputs=[upload_pretrained],
+    )
+    overtraining_detector.change(
+        fn=toggle_visible,
+        inputs=[overtraining_detector],
+        outputs=[overtraining_settings],
+    )
+    train_button.click(
+        fn=enforce_terms,
+        inputs=[
+            terms_checkbox,
+            queue_limit,
+            model_name,
+            save_every_epoch,
+            save_only_latest,
+            save_every_weights,
+            total_epoch,
+            sampling_rate,
+            batch_size,
+            gpu,
+            overtraining_detector,
+            overtraining_threshold,
+            pretrained,
+            cleanup,
+            index_algorithm,
+            cache_dataset_in_gpu,
+            custom_pretrained,
+            g_pretrained_path,
+            d_pretrained_path,
+            vocoder,
+            checkpointing,
+        ],
+        outputs=[
+            train_output_info,
+            monitor_task_id,
+            queue_summary,
+            queue_table,
+            train_button,
+            stop_train_button,
+        ],
+    )
+
+    # 훈련 종료(Celery terminal 상태) 감지 → 큐 목록 + 모니터 즉시 새로고침
+    def _on_status_change(status: str, task_id: str, limit: int):
+        terminal = ("SUCCESS", "FAILURE", "REVOKED", "OVERTRAINING")
+        if not any(status.startswith(t) for t in terminal):
+            return gr.update(), gr.update(), gr.update(), gr.update(), gr.update()
+        rows, summary = get_queue_snapshot(limit=limit)
+        logs, progress, new_status = poll(task_id) if task_id else ("", 0, status)
+        return summary, rows, logs, progress, new_status
+
+    monitor_status.change(
+        fn=_on_status_change,
+        inputs=[monitor_status, monitor_task_id, queue_limit],
+        outputs=[
+            queue_summary,
+            queue_table,
+            monitor_logs,
+            monitor_progress,
+            monitor_status,
+        ],
+    )
+
+    # enforce_terms 가 완료(=큐 등록)되면 stop 버튼은 이미 켜진 상태이므로
+    # train_output_info 변경 시에는 stop 버튼을 끄는 역할만 한다
+    train_output_info.change(
+        fn=disable_stop_train_button,
+        inputs=[],
+        outputs=[train_button, stop_train_button],
+    )
+
+    # ── 큐 모니터: Stop selected 버튼 추가 ──────────────────────
+    def stop_selected_task(task_id: str, limit: int):
+        from utils.redis_util import revoke_job
+
+        if not task_id or not task_id.strip():
+            gr.Warning("선택된 task_id가 없습니다.")
+            return gr.update(), gr.update(), gr.update()
+        ok, msg = revoke_job(task_id.strip())
+        gr.Info(msg) if ok else gr.Warning(msg)
+        rows, summary = get_queue_snapshot(limit=limit)
+        return task_id, summary, rows
+
+    queue_stop.click(
+        fn=stop_selected_task,
+        inputs=[selected_task_id, queue_limit],
+        outputs=[selected_task_id, queue_summary, queue_table],
+    )
+
+    # Delete selected: log/meta 완전 삭제 후 목록에서 제거
+    def delete_selected_task(task_id: str, limit: int):
+        from utils.redis_util import delete_job
+
+        if not task_id or not task_id.strip():
+            gr.Warning("선택된 task_id가 없습니다.")
+            return gr.update(), gr.update(), gr.update()
+        ok, msg = delete_job(task_id.strip())
+        gr.Info(msg) if ok else gr.Warning(msg)
+        rows, summary = get_queue_snapshot(limit=limit)
+        return "", summary, rows
+
+    queue_delete.click(
+        fn=delete_selected_task,
+        inputs=[selected_task_id, queue_limit],
+        outputs=[selected_task_id, queue_summary, queue_table],
+    )

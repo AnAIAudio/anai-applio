@@ -34,12 +34,44 @@ def stop_infer():
 
 
 def restart_applio():
-    if os.name != "nt":
-        os.system("clear")
-    else:
-        os.system("cls")
-    python = sys.executable
-    os.execl(python, python, *sys.argv)
+    restart_applio_swarm()
+
+    # 아래는 Original 재시작 프로세스
+    # if os.name != "nt":
+    #     os.system("clear")
+    # else:
+    #     os.system("cls")
+    # python = sys.executable
+    # os.execl(python, python, *sys.argv)
+
+
+def restart_applio_swarm(model_name: str | None = None):
+    import os
+    import signal
+    import threading
+    import time
+
+    try:
+        if model_name:
+            stop_train(model_name)
+    except Exception:
+        pass
+
+    try:
+        stop_infer()
+    except Exception:
+        pass
+
+    def _shutdown():
+        try:
+            os.kill(os.getpid(), signal.SIGTERM)
+        except Exception:
+            pass
+
+        time.sleep(2)
+        os._exit(1)  # Swarm restart_policy: on-failure에서 재기동
+
+    threading.Thread(target=_shutdown, daemon=True).start()
 
 
 from assets.i18n.i18n import I18nAuto
