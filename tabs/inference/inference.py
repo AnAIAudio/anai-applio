@@ -5,6 +5,8 @@ import shutil
 import datetime
 import torch
 from core import run_infer_script, run_batch_infer_script
+from tabs.inference.infer_utils.multi_infer import run_multi_infer
+from tabs.inference.infer_utils.batch_control import batch_cleanup_temp
 from assets.i18n.i18n import I18nAuto
 from rvc.lib.utils import format_title
 from tabs.settings.restart import stop_infer
@@ -619,9 +621,32 @@ def inference_tab():
         outputs=[model_file, index_file],
     )
 
-    # 단일 파일 추론
+    # 단일/멀티 모드 선택
     with gr.Row():
+        infer_mode = gr.Radio(
+            label=i18n("Inference Mode"),
+            choices=["Single", "Multi (ZIP)"],
+            value="Single",
+            interactive=True,
+        )
+
+    # 단일 파일 추론 영역
+    with gr.Row(visible=True) as single_input_row:
         upload_audio = gr.Audio(label=i18n("Upload Audio"), type="filepath")
+
+    # 멀티 파일 추론 영역 (ZIP 업로드)
+    with gr.Row(visible=False) as multi_input_row:
+        with gr.Column():
+            zip_upload = gr.File(
+                label=i18n("Upload ZIP (audio files)"),
+                file_types=[".zip"],
+                type="filepath",
+            )
+            zip_upload_info = gr.Textbox(
+                label=i18n("ZIP Info"),
+                interactive=False,
+                value="",
+            )
 
     with gr.Row():
         with gr.Column():
@@ -1169,14 +1194,176 @@ def inference_tab():
                 info=i18n("The output information will be displayed here."),
             )
 
-    # single
-    with gr.Row():
+    # single 출력
+    with gr.Row(visible=True) as single_output_row:
         with gr.Column():
             convert_button1 = gr.Button(i18n("Convert"))
             vc_output2 = gr.Audio(label=i18n("Export Audio"))
             stop_button = gr.Button(i18n("Stop convert"), visible=False)
 
+    # multi 출력
+    with gr.Row(visible=False) as multi_output_row:
+        with gr.Column():
+            convert_button_multi = gr.Button(i18n("Convert All (Multi)"))
+            vc_output_multi_info = gr.Textbox(
+                label=i18n("Multi Conversion Progress"),
+                interactive=False,
+                lines=8,
+            )
+            vc_output_multi_zip = gr.File(
+                label=i18n("Download Converted ZIP"),
+                interactive=False,
+                visible=False,
+            )
+            cleanup_button_multi = gr.Button(i18n("Clean up temp files"), visible=False)
+
+    # 멀티 추론 임시 디렉토리 상태 관리
+    multi_temp_dir = gr.State(value=None)
+    multi_extracted_root = gr.State(value=None)
+    multi_converted_dir = gr.State(value=None)
+    multi_converted_zip_state = gr.State(value=None)
+
     stop_button.click(fn=stop_infer, inputs=[], outputs=[])
+
+    # ── 모드 전환 ────────────────────────────────────────────────
+    def switch_infer_mode(mode):
+        is_single = mode == "Single"
+        return (
+            gr.update(visible=is_single),
+            gr.update(visible=not is_single),
+            gr.update(visible=is_single),
+            gr.update(visible=not is_single),
+        )
+
+    infer_mode.change(
+        fn=switch_infer_mode,
+        inputs=[infer_mode],
+        outputs=[
+            single_input_row,
+            multi_input_row,
+            single_output_row,
+            multi_output_row,
+        ],
+    )
+
+    # ── 멀티 변환 버튼 ──────────────────────────────────────────
+    def run_multi_and_update(*args):
+        for progress, t_dir, e_root, c_dir, c_zip in run_multi_infer(*args):
+            has_zip = c_zip is not None and os.path.exists(str(c_zip))
+            yield (
+                progress,
+                gr.update(value=c_zip, visible=has_zip),
+                t_dir,
+                e_root,
+                c_dir,
+                c_zip,
+                gr.update(visible=has_zip),
+            )
+
+    MULTI_INFER_INPUTS = [
+        zip_upload,
+        model_file,
+        index_file,
+        pitch,
+        index_rate,
+        rms_mix_rate,
+        protect,
+        f0_method,
+        split_audio,
+        autotune,
+        autotune_strength,
+        proposed_pitch,
+        proposed_pitch_threshold,
+        clean_audio,
+        clean_strength,
+        export_format,
+        embedder_model,
+        embedder_model_custom,
+        formant_shifting,
+        formant_qfrency,
+        formant_timbre,
+        post_process,
+        db_compensation,
+        reverb,
+        pitch_shift,
+        limiter,
+        gain,
+        distortion,
+        chorus,
+        bitcrush,
+        clipping,
+        compressor,
+        delay,
+        reverb_room_size,
+        reverb_damping,
+        reverb_wet_gain,
+        reverb_dry_gain,
+        reverb_width,
+        reverb_freeze_mode,
+        pitch_shift_semitones,
+        limiter_threshold,
+        limiter_release_time,
+        gain_db,
+        distortion_gain,
+        chorus_rate,
+        chorus_depth,
+        chorus_center_delay,
+        chorus_feedback,
+        chorus_mix,
+        bitcrush_bit_depth,
+        clipping_threshold,
+        compressor_threshold,
+        compressor_ratio,
+        compressor_attack,
+        compressor_release,
+        delay_seconds,
+        delay_feedback,
+        delay_mix,
+        sid,
+    ]
+
+    convert_button_multi.click(
+        fn=run_multi_and_update,
+        inputs=MULTI_INFER_INPUTS,
+        outputs=[
+            vc_output_multi_info,
+            vc_output_multi_zip,
+            multi_temp_dir,
+            multi_extracted_root,
+            multi_converted_dir,
+            multi_converted_zip_state,
+            cleanup_button_multi,
+        ],
+    )
+
+    def do_cleanup(t_dir):
+        import shutil
+
+        if t_dir and os.path.exists(str(t_dir)):
+            shutil.rmtree(t_dir, ignore_errors=True)
+        return (
+            i18n("Temp directory cleaned up."),
+            gr.update(value=None, visible=False),
+            None,
+            None,
+            None,
+            None,
+            gr.update(visible=False),
+        )
+
+    cleanup_button_multi.click(
+        fn=do_cleanup,
+        inputs=[multi_temp_dir],
+        outputs=[
+            vc_output_multi_info,
+            vc_output_multi_zip,
+            multi_temp_dir,
+            multi_extracted_root,
+            multi_converted_dir,
+            multi_converted_zip_state,
+            cleanup_button_multi,
+        ],
+    )
 
     def toggle_visible(checkbox):
         return {"visible": checkbox, "__type__": "update"}
